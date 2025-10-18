@@ -1,0 +1,29 @@
+# Source files (only distribute built files)
+src/
+*.ts
+!*.d.ts
+
+# Development files
+tsconfig.json
+.eslintrc*
+.prettierrc*
+*.test.*
+*.spec.*
+
+# Documentation source
+docs/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Development tools
+.vscode/
+.idea/
+
+# Misc
+*.log
+.DS_Store
+coverage/
+.nyc_output/

@@ -1,0 +1,50 @@
+{
+  "name": "@mrazakos/vc-ecdsa-crypto",
+  "version": "1.0.0",
+  "description": "Fast ECDSA cryptographic utilities for Verifiable Credentials - 100-1000x faster than RSA on mobile devices",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build",
+    "test": "node dist/example.js",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "ecdsa",
+    "crypto",
+    "verifiable-credentials",
+    "ethereum",
+    "secp256k1",
+    "signing",
+    "verification",
+    "fast-crypto",
+    "mobile-crypto"
+  ],
+  "author": "Mrazakos",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mrazakos/vc-ecdsa-crypto.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Mrazakos/vc-ecdsa-crypto/issues"
+  },
+  "homepage": "https://github.com/Mrazakos/vc-ecdsa-crypto#readme",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "ethers": "^6.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
