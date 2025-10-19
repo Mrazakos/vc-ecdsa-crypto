@@ -78,21 +78,6 @@ const isValid = CryptoUtils.verify(
 console.log('Is Valid:', isValid); // true
 ```
 
-### Run Built-in Test
-
-```typescript
-import { CryptoUtils } from '@mrazakos/vc-ecdsa-crypto';
-
-const testResult = await CryptoUtils.runCryptoTest();
-
-if (testResult.success) {
-  console.log('✅ All tests passed!');
-  testResult.results.forEach(result => console.log(result));
-} else {
-  console.error('❌ Test failed:', testResult.error);
-}
-```
-
 ## 📚 API Reference
 
 ### `CryptoUtils`
