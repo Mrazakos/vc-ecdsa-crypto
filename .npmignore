@@ -3,12 +3,27 @@ src/
 *.ts
 !*.d.ts
 
-# Development files
-tsconfig.json
-.eslintrc*
-.prettierrc*
+# Test files and results
+tests/
 *.test.*
 *.spec.*
+adversarial-test-results-*/
+stress-test-results-*/
+TEST_SUITE_SETUP.md
+QUICK_TEST_GUIDE.md
+SECURITY_FIX_NOTES.md
+
+# Thesis and development documentation
+THESIS_RSA_VS_ECDSA_COMPARISON.md
+PUBLISH_CHECKLIST.md
+INTEGRATION.md
+QUICKSTART.md
+
+# Development files
+tsconfig.json
+jest.config.js
+.eslintrc*
+.prettierrc*
 
 # Documentation source
 docs/

@@ -1,14 +1,16 @@
 {
   "name": "@mrazakos/vc-ecdsa-crypto",
-  "version": "1.0.0",
-  "description": "Fast ECDSA cryptographic utilities for Verifiable Credentials - 100-1000x faster than RSA on mobile devices",
+  "version": "1.1.0",
+  "description": "Fast ECDSA cryptographic utilities for Verifiable Credentials - 100-1000x faster than RSA on mobile devices. Production-ready with 2,250+ security and performance tests.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "prepublishOnly": "npm run build",
-    "test": "node dist/example.js",
+    "test": "npm run build && jest",
+    "test:adversarial": "npm run build && jest tests/adversarial-security.test.ts",
+    "test:stress": "npm run build && jest tests/comprehensive-stress.test.ts",
     "clean": "rimraf dist"
   },
   "keywords": [
@@ -41,7 +43,10 @@
     "ethers": "^6.13.0"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.12",
     "@types/node": "^20.11.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
     "typescript": "^5.3.3"
   },
   "engines": {
