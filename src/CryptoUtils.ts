@@ -19,32 +19,32 @@ import {
 export class CryptoUtils {
   /**
    * Generates ECDSA key pair using secp256k1 curve
-   * @returns Promise containing the generated key pair with public and private keys
+   * Returns an Ethereum address as the public key for smart contract compatibility
+   *
+   * @returns Promise containing the key pair with Ethereum address as publicKey
    * @throws Error if key generation fails
    * @example
    * ```typescript
    * const keyPair = await CryptoUtils.generateKeyPair();
-   * console.log(keyPair.publicKey);  // 0x04...
-   * console.log(keyPair.privateKey); // 0x...
+   * console.log(keyPair.publicKey);   // 0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb4 (Ethereum address)
+   * console.log(keyPair.privateKey);  // 0x... (private key for signing)
+   *
+   * // Use publicKey directly in smart contracts:
+   * await lockRegistry.registerLock(lockId, keyPair.publicKey);
    * ```
    */
   static async generateKeyPair(): Promise<KeyPair> {
     try {
-      const startTime = Date.now();
-
       const wallet = ethers.Wallet.createRandom();
 
-      const endTime = Date.now();
-
       return {
-        privateKey: wallet.privateKey,
-        publicKey: wallet.publicKey, // Compressed format (68 chars)
+        publicKey: wallet.address, // Ethereum address (20 bytes)
+        privateKey: wallet.privateKey, // Private key for signing
       };
     } catch (error) {
       throw new Error(`ECDSA key generation failed: ${error}`);
     }
   }
-
   /**
    * Signs a Verifiable Credential input with ECDSA
    * Signs the hash of the VC data (userMetaDataHash + issuanceDate + expirationDate)
@@ -95,11 +95,11 @@ export class CryptoUtils {
   }
 
   /**
-   * Verifies ECDSA signature against data hash
-   * The decrypted signature should match the data hash
+   * Verifies ECDSA signature against data hash using Ethereum address
+   * This is the standard Ethereum signature verification pattern
    *
    * Conceptually, verification answers:
-   * "Given this hash, signature, and public key,
+   * "Given this hash, signature, and address,
    * could this signature have ONLY been created by
    * someone who knew the corresponding private key
    * AND was signing this exact hash?"
@@ -109,14 +109,14 @@ export class CryptoUtils {
    *
    * @param dataHash - The hash that was signed
    * @param signature - The signature to verify
-   * @param publicKey - The public key to verify against
+   * @param ethereumAddress - The Ethereum address (publicKey from generateKeyPair)
    * @returns true if signature is valid, false otherwise
    * @example
    * ```typescript
    * const isValid = CryptoUtils.verify(
    *   signResult.signedMessageHash,
    *   signResult.signature,
-   *   publicKey
+   *   keyPair.publicKey  // This is now an Ethereum address!
    * );
    * console.log(isValid ? "Valid!" : "Invalid!");
    * ```
@@ -124,23 +124,25 @@ export class CryptoUtils {
   static verify(
     dataHash: string,
     signature: string,
-    publicKey: string
+    ethereumAddress: string
   ): boolean {
     try {
       // Convert hash to bytes for verification
       const hashBytes = ethers.getBytes(dataHash);
 
       // Recover the address from the signature and hash
+      // This is what your smart contract will do with ecrecover
       const recoveredAddress = ethers.verifyMessage(hashBytes, signature);
 
-      // Get the expected address from the public key
-      const expectedAddress = ethers.computeAddress(publicKey);
-
+      // Compare recovered address with expected address
       const isValid =
-        recoveredAddress.toLowerCase() === expectedAddress.toLowerCase();
+        recoveredAddress.toLowerCase() === ethereumAddress.toLowerCase();
+
       console.log(
         `✅ Signature verification: ${isValid ? "PASSED" : "FAILED"}`
       );
+      console.log(`   Expected address: ${ethereumAddress}`);
+      console.log(`   Recovered address: ${recoveredAddress}`);
 
       return isValid;
     } catch (error) {

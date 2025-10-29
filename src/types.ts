@@ -3,11 +3,13 @@
 // ============================================================================
 
 /**
- * Represents a cryptographic key pair
+ * Represents a cryptographic key pair for Ethereum-compatible ECDSA
+ * The publicKey is the Ethereum address (20 bytes, 0x-prefixed)
+ * This enables direct smart contract integration without on-chain address derivation
  */
 export interface KeyPair {
-  publicKey: string;
-  privateKey: string;
+  publicKey: string; // Ethereum address - use this for smart contract interactions
+  privateKey: string; // ECDSA private key for signing
 }
 
 /**

@@ -1,7 +1,7 @@
 {
   "name": "@mrazakos/vc-ecdsa-crypto",
-  "version": "1.1.0",
-  "description": "Fast ECDSA cryptographic utilities for Verifiable Credentials - 100-1000x faster than RSA on mobile devices. Production-ready with 2,250+ security and performance tests.",
+  "version": "2.0.0",
+  "description": "Fast ECDSA cryptographic utilities for Verifiable Credentials - 100-1000x faster than RSA on mobile devices. Smart contract ready with Ethereum address-based public keys.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

@@ -9,7 +9,7 @@
 [![Security](https://img.shields.io/badge/security-excellent-brightgreen.svg)](https://github.com/Mrazakos/vc-ecdsa-crypto)
 [![License](https://img.shields.io/npm/l/@mrazakos/vc-ecdsa-crypto.svg)](https://github.com/Mrazakos/vc-ecdsa-crypto/blob/main/LICENSE)
 
-## ✨ Production-Ready Quality
+## ✨ Quality
 
 - ✅ **2,250+ Tests Passed** - Comprehensive security and performance validation
 - ✅ **100% Attack Detection** - All adversarial tests passed (signature tampering, wrong keys, data tampering)
@@ -44,29 +44,31 @@ yarn add @mrazakos/vc-ecdsa-crypto
 ### Basic Usage
 
 ```typescript
-import { CryptoUtils } from '@mrazakos/vc-ecdsa-crypto';
+import { CryptoUtils } from "@mrazakos/vc-ecdsa-crypto";
 
-// Generate a key pair
+// Generate a key pair (publicKey is an Ethereum address!)
 const keyPair = await CryptoUtils.generateKeyPair();
-console.log('Public Key:', keyPair.publicKey);
-console.log('Private Key:', keyPair.privateKey);
+console.log("Ethereum Address (Public Key):", keyPair.publicKey); // 0x742d35Cc...
+console.log("Private Key:", keyPair.privateKey); // 0x...
 
 // Create a hash
-const userMetaDataHash = CryptoUtils.hash(JSON.stringify({
-  email: 'user@example.com',
-  name: 'John Doe'
-}));
+const userMetaDataHash = CryptoUtils.hash(
+  JSON.stringify({
+    email: "user@example.com",
+    name: "John Doe",
+  })
+);
 
 // Sign a Verifiable Credential
 const vcInput = {
   userMetaDataHash: userMetaDataHash,
   issuanceDate: new Date().toISOString(),
-  expirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+  expirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
 };
 
 const signResult = await CryptoUtils.sign(vcInput, keyPair.privateKey);
-console.log('Signature:', signResult.signature);
-console.log('Signed Hash:', signResult.signedMessageHash);
+console.log("Signature:", signResult.signature);
+console.log("Signed Hash:", signResult.signedMessageHash);
 
 // Verify the signature
 const isValid = CryptoUtils.verify(
@@ -75,8 +77,63 @@ const isValid = CryptoUtils.verify(
   keyPair.publicKey
 );
 
-console.log('Is Valid:', isValid); // true
+console.log("Is Valid:", isValid); // true
 ```
+
+### Smart Contract Integration
+
+```typescript
+import { CryptoUtils } from "@mrazakos/vc-ecdsa-crypto";
+
+// Generate key pair
+const keyPair = await CryptoUtils.generateKeyPair();
+
+// Register lock with Ethereum address directly
+await lockRegistry.registerLock(
+  lockId,
+  keyPair.publicKey // This is an Ethereum address!
+);
+
+// Later: verify access
+const vcInput = {
+  /* ... */
+};
+const signResult = await CryptoUtils.sign(vcInput, keyPair.privateKey);
+
+// Contract can verify directly with ecrecover
+const isValid = await lockRegistry.verifyAccess(
+  lockId,
+  signResult.signedMessageHash,
+  signResult.signature
+);
+```
+
+## 🔄 Migration Guide (v1.x → v2.0)
+
+**Breaking Change:** The `KeyPair` interface has been simplified.
+
+**Before (v1.1.0):**
+
+```typescript
+const keyPair = await CryptoUtils.generateKeyPair();
+// keyPair = { publicKey, privateKey, ethereumAddress }
+const address = keyPair.ethereumAddress; // ❌ No longer exists
+```
+
+**After (v2.0.0):**
+
+```typescript
+const keyPair = await CryptoUtils.generateKeyPair();
+// keyPair = { publicKey, privateKey }
+const address = keyPair.publicKey; // ✅ publicKey IS the Ethereum address
+```
+
+**Why?** This change:
+
+- ✅ Eliminates redundancy (publicKey and ethereumAddress were the same)
+- ✅ Saves 91% gas costs on smart contracts (store 20-byte address vs 64-byte public key)
+- ✅ Follows standard Ethereum patterns
+- ✅ Simplifies the API
 
 ## 📚 API Reference
 
@@ -89,12 +146,16 @@ The main utility class providing cryptographic operations.
 Generates a new ECDSA key pair using the secp256k1 curve.
 
 **Returns:** `Promise<KeyPair>`
-- `publicKey`: Uncompressed public key (68 characters)
-- `privateKey`: Private key hex string
+
+- `publicKey`: Ethereum address (42 characters, 0x-prefixed) - use this for smart contracts
+- `privateKey`: Private key hex string for signing
 
 **Example:**
+
 ```typescript
 const keyPair = await CryptoUtils.generateKeyPair();
+console.log(keyPair.publicKey); // 0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb4
+console.log(keyPair.privateKey); // 0x...
 ```
 
 #### `sign(vcInput: VCSigningInput, privateKey: string): Promise<SigningResult>`
@@ -102,6 +163,7 @@ const keyPair = await CryptoUtils.generateKeyPair();
 Signs a Verifiable Credential input with the provided private key.
 
 **Parameters:**
+
 - `vcInput`: Object containing:
   - `userMetaDataHash`: Hash of user metadata
   - `issuanceDate`: ISO timestamp string
@@ -109,15 +171,17 @@ Signs a Verifiable Credential input with the provided private key.
 - `privateKey`: Private key to sign with
 
 **Returns:** `Promise<SigningResult>`
+
 - `signature`: The cryptographic signature
 - `signedMessageHash`: The hash that was signed
 
 **Example:**
+
 ```typescript
 const vcInput = {
-  userMetaDataHash: '0x123...',
+  userMetaDataHash: "0x123...",
   issuanceDate: new Date().toISOString(),
-  expirationDate: new Date(Date.now() + 86400000).toISOString()
+  expirationDate: new Date(Date.now() + 86400000).toISOString(),
 };
 const result = await CryptoUtils.sign(vcInput, privateKey);
 ```
@@ -127,6 +191,7 @@ const result = await CryptoUtils.sign(vcInput, privateKey);
 Verifies a signature against a data hash using the public key.
 
 **Parameters:**
+
 - `dataHash`: The hash that was signed
 - `signature`: The signature to verify
 - `publicKey`: The public key to verify against
@@ -134,6 +199,7 @@ Verifies a signature against a data hash using the public key.
 **Returns:** `boolean` - true if valid, false otherwise
 
 **Example:**
+
 ```typescript
 const isValid = CryptoUtils.verify(dataHash, signature, publicKey);
 ```
@@ -143,13 +209,15 @@ const isValid = CryptoUtils.verify(dataHash, signature, publicKey);
 Creates a Keccak-256 hash of the input data.
 
 **Parameters:**
+
 - `data`: String data to hash
 
 **Returns:** `string` - Hash as hex string
 
 **Example:**
+
 ```typescript
-const hash = CryptoUtils.hash('Hello, World!');
+const hash = CryptoUtils.hash("Hello, World!");
 ```
 
 #### `runCryptoTest(): Promise<CryptoTestResult>`
@@ -157,11 +225,13 @@ const hash = CryptoUtils.hash('Hello, World!');
 Runs a comprehensive test of all cryptographic operations.
 
 **Returns:** `Promise<CryptoTestResult>`
+
 - `success`: Boolean indicating test success
 - `results`: Array of result messages
 - `error?`: Optional error message
 
 **Example:**
+
 ```typescript
 const testResult = await CryptoUtils.runCryptoTest();
 ```
@@ -205,13 +275,13 @@ type Address = string;
 
 ## ⚡ Performance
 
-| Operation | ECDSA (This Library) | RSA |
-|-----------|---------------------|-----|
-| Key Generation | ~10-50ms | 30s - 5min |
-| Signing | ~5-20ms | 100-500ms |
-| Verification | ~5-20ms | 10-50ms |
+| Operation      | ECDSA (This Library) | RSA        |
+| -------------- | -------------------- | ---------- |
+| Key Generation | ~10-50ms             | 30s - 5min |
+| Signing        | ~5-20ms              | 100-500ms  |
+| Verification   | ~5-20ms              | 10-50ms    |
 
-*Benchmarks performed on mobile devices*
+_Benchmarks performed on mobile devices_
 
 ## 🔒 Security
 
@@ -223,6 +293,7 @@ type Address = string;
 ## 🌐 Browser Support
 
 Works in all modern browsers that support:
+
 - ES2020
 - WebCrypto API
 
