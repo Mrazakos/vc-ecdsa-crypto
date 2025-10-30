@@ -2,6 +2,7 @@ import { CryptoUtils, VCSigningInput } from "../src/index";
 import { randomBytes, randomInt } from "crypto";
 import { writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
+import { ethers } from "ethers";
 
 /**
  * ADVERSARIAL CRYPTOGRAPHIC TESTING SUITE FOR ECDSA
@@ -132,9 +133,11 @@ describe("Adversarial Cryptographic Security Testing - ECDSA", () => {
   test("Signature Tampering Attack Detection", async () => {
     console.log("Testing ECDSA signature tampering attack detection...");
 
-    const keyPair = await CryptoUtils.generateKeyPair();
+    const keyPair = await CryptoUtils.generateCryptoIdentity();
     const testUserData = { email: "test@example.com", name: "Test User" };
-    const userMetaDataHash = CryptoUtils.hash(JSON.stringify(testUserData));
+    const userMetaDataHash = ethers.keccak256(
+      ethers.toUtf8Bytes(JSON.stringify(testUserData))
+    );
 
     for (let i = 0; i < 50; i++) {
       results.testSummary.totalTests++;
@@ -147,8 +150,9 @@ describe("Adversarial Cryptographic Security Testing - ECDSA", () => {
           expirationDate: new Date(Date.now() + 86400000).toISOString(),
         };
 
-        // Create valid signature
-        const signResult = await CryptoUtils.sign(vcInput, keyPair.privateKey);
+        // Create valid signature using off-chain mode
+        const vcHash = CryptoUtils.getVCHash(vcInput);
+        const signResult = CryptoUtils.signOffChain(vcHash, keyPair.privateKey);
 
         if (!signResult.signature || !signResult.signedMessageHash) {
           throw new Error("Failed to create signature for tampering test");
@@ -178,7 +182,7 @@ describe("Adversarial Cryptographic Security Testing - ECDSA", () => {
         }
 
         // Attempt verification with tampered signature
-        const verifyResult = CryptoUtils.verify(
+        const verifyResult = CryptoUtils.verifyOffChain(
           signResult.signedMessageHash,
           tamperedSignature,
           keyPair.publicKey
@@ -235,7 +239,7 @@ describe("Adversarial Cryptographic Security Testing - ECDSA", () => {
   test("Wrong Key Attack Detection", async () => {
     console.log("Testing wrong ECDSA key attack detection...");
 
-    const correctKeyPair = await CryptoUtils.generateKeyPair();
+    const correctKeyPair = await CryptoUtils.generateCryptoIdentity();
     const testUserData = { email: "test@example.com", name: "Test User" };
     const userMetaDataHash = CryptoUtils.hash(JSON.stringify(testUserData));
 
@@ -251,8 +255,8 @@ describe("Adversarial Cryptographic Security Testing - ECDSA", () => {
         };
 
         // Create signature with correct key
-        const signResult = await CryptoUtils.sign(
-          vcInput,
+        const signResult = await CryptoUtils.signOffChain(
+          JSON.stringify(vcInput),
           correctKeyPair.privateKey
         );
 
@@ -263,7 +267,7 @@ describe("Adversarial Cryptographic Security Testing - ECDSA", () => {
         // Try to verify with wrong key
         const wrongKey = await generateWrongKey(i);
 
-        const verifyResult = CryptoUtils.verify(
+        const verifyResult = CryptoUtils.verifyOffChain(
           signResult.signedMessageHash,
           signResult.signature,
           wrongKey
@@ -293,7 +297,7 @@ describe("Adversarial Cryptographic Security Testing - ECDSA", () => {
   test("Data Tampering Attack Detection", async () => {
     console.log("Testing data tampering attack detection with ECDSA...");
 
-    const keyPair = await CryptoUtils.generateKeyPair();
+    const keyPair = await CryptoUtils.generateCryptoIdentity();
     const originalUserData = {
       email: "original@example.com",
       name: "Original User",
@@ -312,7 +316,10 @@ describe("Adversarial Cryptographic Security Testing - ECDSA", () => {
         };
 
         // Sign original data
-        const signResult = await CryptoUtils.sign(vcInput, keyPair.privateKey);
+        const signResult = await CryptoUtils.signOffChain(
+          vcInput,
+          keyPair.privateKey
+        );
 
         if (!signResult.signature || !signResult.signedMessageHash) {
           continue;
@@ -373,7 +380,7 @@ describe("Adversarial Cryptographic Security Testing - ECDSA", () => {
   test("Robustness Against Malformed Input", async () => {
     console.log("Testing robustness against malformed input...");
 
-    const keyPair = await CryptoUtils.generateKeyPair();
+    const keyPair = await CryptoUtils.generateCryptoIdentity();
     const malformedInputs: Array<{
       userMetaDataHash: any;
       issuanceDate: any;
@@ -512,7 +519,7 @@ describe("Adversarial Cryptographic Security Testing - ECDSA", () => {
   test("Performance Under Stress - ECDSA Speed Test", async () => {
     console.log("Testing ECDSA performance under stress (should be FAST)...");
 
-    const keyPair = await CryptoUtils.generateKeyPair();
+    const keyPair = await CryptoUtils.generateCryptoIdentity();
     const performanceThresholds = {
       keyGen: 50, // 50ms max for key generation (ECDSA is fast!)
       sign: 50, // 50ms max for signing
@@ -526,7 +533,7 @@ describe("Adversarial Cryptographic Security Testing - ECDSA", () => {
 
     const keyGenStart = performance.now();
     for (let i = 0; i < 10; i++) {
-      await CryptoUtils.generateKeyPair();
+      await CryptoUtils.generateCryptoIdentity();
     }
     const keyGenEnd = performance.now();
     const avgKeyGenTime = (keyGenEnd - keyGenStart) / 10;
@@ -628,7 +635,7 @@ describe("Adversarial Cryptographic Security Testing - ECDSA", () => {
   test("Normal Operations Baseline - ECDSA", async () => {
     console.log("Testing normal ECDSA operations baseline...");
 
-    const keyPair = await CryptoUtils.generateKeyPair();
+    const keyPair = await CryptoUtils.generateCryptoIdentity();
 
     for (let i = 0; i < 100; i++) {
       results.testSummary.totalTests++;
@@ -639,7 +646,9 @@ describe("Adversarial Cryptographic Security Testing - ECDSA", () => {
           email: `user${i}@example.com`,
           name: `User ${i}`,
         };
-        const userMetaDataHash = CryptoUtils.hash(JSON.stringify(testUserData));
+        const userMetaDataHash = ethers.keccak256(
+          ethers.toUtf8Bytes(JSON.stringify(testUserData))
+        );
 
         const vcInput: VCSigningInput = {
           userMetaDataHash: userMetaDataHash,
@@ -647,13 +656,14 @@ describe("Adversarial Cryptographic Security Testing - ECDSA", () => {
           expirationDate: new Date(Date.now() + 86400000).toISOString(),
         };
 
-        const signResult = await CryptoUtils.sign(vcInput, keyPair.privateKey);
+        const vcHash = CryptoUtils.getVCHash(vcInput);
+        const signResult = CryptoUtils.signOffChain(vcHash, keyPair.privateKey);
 
         if (!signResult.signature || !signResult.signedMessageHash) {
           throw new Error("Normal operation: Sign failed");
         }
 
-        const verifyResult = CryptoUtils.verify(
+        const verifyResult = CryptoUtils.verifyOffChain(
           signResult.signedMessageHash,
           signResult.signature,
           keyPair.publicKey
@@ -761,7 +771,7 @@ describe("Adversarial Cryptographic Security Testing - ECDSA", () => {
 
   async function generateWrongKey(index: number): Promise<string> {
     const wrongKeys: string[] = [
-      (await CryptoUtils.generateKeyPair()).publicKey, // Different valid key
+      (await CryptoUtils.generateCryptoIdentity()).publicKey, // Different valid key
       "0x04" + "00".repeat(64), // Invalid public key
       "", // Empty
       "not-a-key", // Invalid

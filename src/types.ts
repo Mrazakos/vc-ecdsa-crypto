@@ -1,16 +1,26 @@
 // ============================================================================
+// W3C VC 2.0 COMPLIANT TYPES
+// ============================================================================
+export * from "./types/w3c-vc.types";
+
+// ============================================================================
 // CRYPTO-RELATED TYPES
 // ============================================================================
 
 /**
- * Represents a cryptographic key pair for Ethereum-compatible ECDSA
- * The publicKey is the Ethereum address (20 bytes, 0x-prefixed)
- * This enables direct smart contract integration without on-chain address derivation
+ * Represents a complete cryptographic identity for dual-mode operation
+ * Contains all three components needed for off-chain and on-chain operations
  */
-export interface KeyPair {
-  publicKey: string; // Ethereum address - use this for smart contract interactions
-  privateKey: string; // ECDSA private key for signing
+export interface CryptoIdentity {
+  privateKey: string; // Private key for signing (keep secret!)
+  publicKey: string; // Full 65-byte ECDSA public key (0x04...) - for off-chain verification
+  address: string; // Ethereum address (20 bytes) - for on-chain smart contract use
 }
+
+/**
+ * @deprecated Use CryptoIdentity instead
+ */
+export interface KeyPair extends CryptoIdentity {}
 
 /**
  * Represents a hash value
@@ -22,7 +32,12 @@ export type Hash = string;
  */
 export type Address = string;
 
+// ============================================================================
+// LEGACY TYPES (maintained for backward compatibility)
+// ============================================================================
+
 /**
+ * @deprecated Use W3C VC types instead. This is legacy type for simple VC input.
  * Input type for signing a Verifiable Credential
  * Contains the essential data that needs to be cryptographically signed
  */

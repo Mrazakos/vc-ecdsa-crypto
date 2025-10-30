@@ -1,57 +1,69 @@
-import { ethers } from "ethers";
-import {
-  KeyPair,
-  VCSigningInput,
-  SigningResult,
-  CryptoTestResult,
-} from "./types";
+import { ethers, SigningKey } from "ethers";
+import { CryptoIdentity, VCSigningInput, SigningResult } from "./types";
 
 /**
  * FAST Crypto Utils using ECDSA (secp256k1)
  * 100-1000x faster than RSA on mobile devices
  *
- * This class provides cryptographic utilities for:
- * - Generating ECDSA key pairs
- * - Signing Verifiable Credentials
- * - Verifying signatures
- * - Hashing data
+ * This class provides DUAL-MODE cryptographic utilities:
+ *
+ * OFF-CHAIN MODE (Physical Lock Verification):
+ * - Uses raw ECDSA signatures (no Ethereum prefix)
+ * - Verifies with full 65-byte public key
+ * - Standard ECDSA compatible with any library
+ *
+ * ON-CHAIN MODE (Smart Contract Integration):
+ * - Uses Ethereum-prefixed signatures
+ * - Verifies with 20-byte address (ecrecover)
+ * - Compatible with Solidity ecrecover function
+ *
+ * FUTURE-PROOF DESIGN:
+ * - Off-chain verification can support post-quantum algorithms
+ * - On-chain operations remain ECDSA (Ethereum native)
  */
 export class CryptoUtils {
   /**
    * Generates ECDSA key pair using secp256k1 curve
-   * Returns an Ethereum address as the public key for smart contract compatibility
+   * Returns all three key components for dual-mode operation
    *
-   * @returns Promise containing the key pair with Ethereum address as publicKey
+   * @returns Promise containing the key pair with privateKey, publicKey (65-byte), and address (20-byte)
    * @throws Error if key generation fails
    * @example
    * ```typescript
    * const keyPair = await CryptoUtils.generateKeyPair();
-   * console.log(keyPair.publicKey);   // 0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb4 (Ethereum address)
-   * console.log(keyPair.privateKey);  // 0x... (private key for signing)
+   * console.log(keyPair.privateKey);  // 0x... (for signing)
+   * console.log(keyPair.publicKey);   // 0x04... (65 bytes - off-chain verification)
+   * console.log(keyPair.address);     // 0x742d... (20 bytes - on-chain use)
    *
-   * // Use publicKey directly in smart contracts:
-   * await lockRegistry.registerLock(lockId, keyPair.publicKey);
+   * // Off-chain: physical lock verification
+   * const offChainSig = CryptoUtils.signOffChain(vcHash, keyPair.privateKey);
+   * const isValid = CryptoUtils.verifyOffChain(vcHash, offChainSig.signature, keyPair.publicKey);
+   *
+   * // On-chain: smart contract interaction
+   * const onChainSig = await CryptoUtils.signOnChain(vcHash, keyPair.privateKey);
+   * await contract.revokeCredential(vcHash, onChainSig.signature);
    * ```
    */
-  static async generateKeyPair(): Promise<KeyPair> {
+  static async generateCryptoIdentity(): Promise<CryptoIdentity> {
     try {
       const wallet = ethers.Wallet.createRandom();
 
       return {
-        publicKey: wallet.address, // Ethereum address (20 bytes)
-        privateKey: wallet.privateKey, // Private key for signing
+        privateKey: wallet.privateKey, // For signing
+        publicKey: wallet.publicKey, // 65-byte key (off-chain)
+        address: wallet.address, // 20-byte address (on-chain)
       };
     } catch (error) {
       throw new Error(`ECDSA key generation failed: ${error}`);
     }
   }
+
   /**
-   * Signs a Verifiable Credential input with ECDSA
-   * Signs the hash of the VC data (userMetaDataHash + issuanceDate + expirationDate)
-   * @param vcInput - The VC signing input containing userMetaDataHash, issuanceDate, and expirationDate
-   * @param privateKey - The ECDSA private key to sign with
-   * @returns SigningResult containing the signature and the hash that was signed
-   * @throws Error if signing fails
+   * Creates the canonical hash of a Verifiable Credential input
+   * IMPORTANT: Your smart contract must use the SAME hashing scheme!
+   *
+   * @param vcInput - The VC data to hash
+   * @returns The Keccak-256 hash of the canonical VC representation
    * @example
    * ```typescript
    * const vcInput = {
@@ -59,30 +71,120 @@ export class CryptoUtils {
    *   issuanceDate: new Date().toISOString(),
    *   expirationDate: new Date(Date.now() + 86400000).toISOString()
    * };
-   * const result = await CryptoUtils.sign(vcInput, privateKey);
-   * console.log(result.signature);
+   * const vcHash = CryptoUtils.getVCHash(vcInput);
    * ```
    */
-  static async sign(
-    vcInput: VCSigningInput,
+  static getVCHash(vcInput: VCSigningInput): string {
+    const message = JSON.stringify({
+      userMetaDataHash: vcInput.userMetaDataHash,
+      issuanceDate: vcInput.issuanceDate,
+      expirationDate: vcInput.expirationDate || null,
+    });
+    return ethers.keccak256(ethers.toUtf8Bytes(message));
+  }
+
+  // ============================================================================
+  // OFF-CHAIN FUNCTIONS (Physical Lock / Mobile App Verification)
+  // ============================================================================
+
+  /**
+   * Signs a RAW hash for OFF-CHAIN verification (e.g., physical lock)
+   * This signature can be verified by ANY standard ECDSA library
+   * NO Ethereum-specific prefix is added
+   *
+   * USE CASE: Physical lock verifies VC without smart contract
+   *
+   * @param dataHash - The raw hash to sign (e.g., vcHash from getVCHash)
+   * @param privateKey - The private key to sign with
+   * @returns SigningResult with compact signature (r+s+v format)
+   * @example
+   * ```typescript
+   * const vcHash = CryptoUtils.getVCHash(vcInput);
+   * const signature = CryptoUtils.signOffChain(vcHash, keyPair.privateKey);
+   * // Physical lock can verify with keyPair.publicKey
+   * ```
+   */
+  static signOffChain(dataHash: string, privateKey: string): SigningResult {
+    try {
+      const wallet = new ethers.Wallet(privateKey);
+      const hashBytes = ethers.getBytes(dataHash);
+
+      // wallet.signingKey.sign() signs the RAW hash (no Ethereum prefix)
+      const sig = wallet.signingKey.sign(hashBytes);
+
+      return {
+        signature: sig.serialized, // Serialized signature format
+        signedMessageHash: dataHash,
+      };
+    } catch (error) {
+      throw new Error(`ECDSA off-chain signing failed: ${error}`);
+    }
+  }
+
+  /**
+   * Verifies an OFF-CHAIN signature using the FULL PUBLIC KEY
+   * This is what your physical lock will use
+   *
+   * @param dataHash - The original raw hash
+   * @param signature - The off-chain signature (from signOffChain)
+   * @param publicKey - The full 65-byte public key (0x04...)
+   * @returns true if signature is valid
+   * @example
+   * ```typescript
+   * const isValid = CryptoUtils.verifyOffChain(
+   *   vcHash,
+   *   signature.signature,
+   *   keyPair.publicKey  // 65-byte key!
+   * );
+   * ```
+   */
+  static verifyOffChain(
+    dataHash: string,
+    signature: string,
+    publicKey: string
+  ): boolean {
+    try {
+      const hashBytes = ethers.getBytes(dataHash);
+
+      // Recover public key from raw hash and signature
+      const recoveredPubKey = SigningKey.recoverPublicKey(hashBytes, signature);
+
+      // Compare recovered key with expected key
+      return recoveredPubKey.toLowerCase() === publicKey.toLowerCase();
+    } catch (error) {
+      console.error("❌ Off-chain verification failed:", error);
+      return false;
+    }
+  }
+
+  // ============================================================================
+  // ON-CHAIN FUNCTIONS (Smart Contract Integration)
+  // ============================================================================
+
+  /**
+   * Signs a hash with ETHEREUM-SPECIFIC PREFIX for on-chain use
+   * USE ONLY for smart contract calls (e.g., revokeCredential)!
+   * This adds the "\x19Ethereum Signed Message:\n32" prefix
+   *
+   * @param dataHash - The hash to sign (e.g., vcHash)
+   * @param privateKey - The private key to sign with
+   * @returns SigningResult with Ethereum-prefixed signature
+   * @example
+   * ```typescript
+   * const vcHash = CryptoUtils.getVCHash(vcInput);
+   * const signature = await CryptoUtils.signOnChain(vcHash, keyPair.privateKey);
+   * await contract.revokeCredential(vcHash, signature.signature);
+   * ```
+   */
+  static async signOnChain(
+    dataHash: string,
     privateKey: string
   ): Promise<SigningResult> {
     try {
-      // Step 1: Create a canonical message from the VC input
-      const message = JSON.stringify({
-        userMetaDataHash: vcInput.userMetaDataHash,
-        issuanceDate: vcInput.issuanceDate,
-        expirationDate: vcInput.expirationDate || null,
-      });
-
-      // Step 2: Hash the message
-      const dataHash = ethers.keccak256(ethers.toUtf8Bytes(message));
-
-      // Step 3: Sign the hash
       const wallet = new ethers.Wallet(privateKey);
-
-      // Convert hash to bytes and sign it
       const hashBytes = ethers.getBytes(dataHash);
+
+      // signMessage() AUTOMATICALLY adds the Ethereum prefix
       const signature = await wallet.signMessage(hashBytes);
 
       return {
@@ -90,66 +192,48 @@ export class CryptoUtils {
         signedMessageHash: dataHash,
       };
     } catch (error) {
-      throw new Error(`ECDSA signing failed: ${error}`);
+      throw new Error(`ECDSA on-chain signing failed: ${error}`);
     }
   }
 
   /**
-   * Verifies ECDSA signature against data hash using Ethereum address
-   * This is the standard Ethereum signature verification pattern
+   * Verifies an ON-CHAIN (Ethereum-prefixed) signature using ADDRESS
+   * This does exactly what your smart contract's ecrecover does
    *
-   * Conceptually, verification answers:
-   * "Given this hash, signature, and address,
-   * could this signature have ONLY been created by
-   * someone who knew the corresponding private key
-   * AND was signing this exact hash?"
-   *
-   * If answer is YES → signature is valid
-   * If answer is NO → signature is invalid or forged
-   *
-   * @param dataHash - The hash that was signed
-   * @param signature - The signature to verify
-   * @param ethereumAddress - The Ethereum address (publicKey from generateKeyPair)
-   * @returns true if signature is valid, false otherwise
+   * @param dataHash - The original hash
+   * @param signature - The on-chain signature (from signOnChain)
+   * @param ethereumAddress - The expected signer's address
+   * @returns true if signature is valid
    * @example
    * ```typescript
-   * const isValid = CryptoUtils.verify(
-   *   signResult.signedMessageHash,
-   *   signResult.signature,
-   *   keyPair.publicKey  // This is now an Ethereum address!
+   * const isValid = CryptoUtils.verifyOnChain(
+   *   vcHash,
+   *   signature.signature,
+   *   keyPair.address  // 20-byte address!
    * );
-   * console.log(isValid ? "Valid!" : "Invalid!");
    * ```
    */
-  static verify(
+  static verifyOnChain(
     dataHash: string,
     signature: string,
     ethereumAddress: string
   ): boolean {
     try {
-      // Convert hash to bytes for verification
       const hashBytes = ethers.getBytes(dataHash);
 
-      // Recover the address from the signature and hash
-      // This is what your smart contract will do with ecrecover
+      // verifyMessage() knows to look for Ethereum prefix
       const recoveredAddress = ethers.verifyMessage(hashBytes, signature);
 
-      // Compare recovered address with expected address
-      const isValid =
-        recoveredAddress.toLowerCase() === ethereumAddress.toLowerCase();
-
-      console.log(
-        `✅ Signature verification: ${isValid ? "PASSED" : "FAILED"}`
-      );
-      console.log(`   Expected address: ${ethereumAddress}`);
-      console.log(`   Recovered address: ${recoveredAddress}`);
-
-      return isValid;
+      return recoveredAddress.toLowerCase() === ethereumAddress.toLowerCase();
     } catch (error) {
-      console.error("❌ ECDSA verification failed:", error);
+      console.error("❌ On-chain verification failed:", error);
       return false;
     }
   }
+
+  // ============================================================================
+  // LEGACY COMPATIBILITY FUNCTIONS
+  // ============================================================================
 
   /**
    * Creates a Keccak-256 hash of the input data

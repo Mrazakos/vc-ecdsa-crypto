@@ -2,6 +2,7 @@ import { CryptoUtils, VCSigningInput, KeyPair } from "../src/index";
 import { randomBytes, randomInt } from "crypto";
 import { writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
+import { ethers } from "ethers";
 
 /**
  * COMPREHENSIVE STRESS TESTING SUITE FOR ECDSA
@@ -168,7 +169,7 @@ describe("Comprehensive Stress Testing - ECDSA CryptoUtils", () => {
     let keyGenOperations = 0;
 
     // Generate key pair once for most tests (more realistic)
-    const sharedKeyPair = await CryptoUtils.generateKeyPair();
+    const sharedKeyPair = await CryptoUtils.generateCryptoIdentity();
 
     for (let i = 0; i < NUM_CRYPTOUTILS_TESTS; i++) {
       try {
@@ -178,7 +179,7 @@ describe("Comprehensive Stress Testing - ECDSA CryptoUtils", () => {
         let keyPair: KeyPair;
         if (i % 100 === 0) {
           const keyGenStart = performance.now();
-          keyPair = await CryptoUtils.generateKeyPair();
+          keyPair = await CryptoUtils.generateCryptoIdentity();
           const keyGenEnd = performance.now();
           totalKeyGenTime += keyGenEnd - keyGenStart;
           keyGenOperations++;
@@ -189,9 +190,10 @@ describe("Comprehensive Stress Testing - ECDSA CryptoUtils", () => {
         // Generate random test data
         const testData = generateRandomVCInput(i);
 
-        // Test signing
+        // Test signing with off-chain mode
+        const vcHash = CryptoUtils.getVCHash(testData);
         const signStart = performance.now();
-        const signResult = await CryptoUtils.sign(testData, keyPair.privateKey);
+        const signResult = CryptoUtils.signOffChain(vcHash, keyPair.privateKey);
         const signEnd = performance.now();
 
         totalSignTime += signEnd - signStart;
@@ -203,7 +205,7 @@ describe("Comprehensive Stress Testing - ECDSA CryptoUtils", () => {
 
         // Test verification
         const verifyStart = performance.now();
-        const verifyResult = CryptoUtils.verify(
+        const verifyResult = CryptoUtils.verifyOffChain(
           signResult.signedMessageHash,
           signResult.signature,
           keyPair.publicKey
@@ -297,27 +299,30 @@ describe("Comprehensive Stress Testing - ECDSA CryptoUtils", () => {
         );
 
         // Step 1: Generate key pair
-        const keyPair = await CryptoUtils.generateKeyPair();
+        const keyPair = await CryptoUtils.generateCryptoIdentity();
         scenarioResult.keyPairGenerated = true;
 
         // Step 2: Create random user metadata and hash it
         const userMetadata = generateRandomUserMetadata(scenarioIndex);
-        const userMetaDataHash = CryptoUtils.hash(JSON.stringify(userMetadata));
+        const userMetaDataHash = ethers.keccak256(
+          ethers.toUtf8Bytes(JSON.stringify(userMetadata))
+        );
         scenarioResult.hashCreated = true;
 
         // Step 3: Create VC input with random dates
         const vcInput = generateRandomVCInput(scenarioIndex);
         vcInput.userMetaDataHash = userMetaDataHash; // Use the hash we created
 
-        // Step 4: Sign the VC
-        const signResult = await CryptoUtils.sign(vcInput, keyPair.privateKey);
+        // Step 4: Sign the VC using off-chain mode
+        const vcHash = CryptoUtils.getVCHash(vcInput);
+        const signResult = CryptoUtils.signOffChain(vcHash, keyPair.privateKey);
         scenarioResult.vcSigned = !!(
           signResult.signature && signResult.signedMessageHash
         );
 
         // Step 5: Verify the signature
         if (signResult.signature && signResult.signedMessageHash) {
-          const verifyResult = CryptoUtils.verify(
+          const verifyResult = CryptoUtils.verifyOffChain(
             signResult.signedMessageHash,
             signResult.signature,
             keyPair.publicKey
