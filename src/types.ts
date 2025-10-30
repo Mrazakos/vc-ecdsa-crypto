@@ -31,36 +31,3 @@ export type Hash = string;
  * Represents an Ethereum-style address
  */
 export type Address = string;
-
-// ============================================================================
-// LEGACY TYPES (maintained for backward compatibility)
-// ============================================================================
-
-/**
- * @deprecated Use W3C VC types instead. This is legacy type for simple VC input.
- * Input type for signing a Verifiable Credential
- * Contains the essential data that needs to be cryptographically signed
- */
-export interface VCSigningInput {
-  userMetaDataHash: string; // Hash of the user metadata for privacy protection
-  issuanceDate: string; // ISO string format
-  expirationDate?: string; // ISO string format (optional)
-}
-
-/**
- * Result of a signing operation
- * Contains the signature and the hash that was signed
- */
-export interface SigningResult {
-  signature: string;
-  signedMessageHash: string;
-}
-
-/**
- * Result of a cryptographic test
- */
-export interface CryptoTestResult {
-  success: boolean;
-  results: string[];
-  error?: string;
-}

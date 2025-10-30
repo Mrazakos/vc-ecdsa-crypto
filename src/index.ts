@@ -14,15 +14,7 @@ export * from "./types/w3c-vc.types";
 // ============================================================================
 // LEGACY TYPES (for backward compatibility)
 // ============================================================================
-export {
-  KeyPair, // @deprecated - use CryptoIdentity
-  CryptoIdentity,
-  Hash,
-  Address,
-  VCSigningInput, // @deprecated - use W3C VC types
-  SigningResult,
-  CryptoTestResult,
-} from "./types";
+export { CryptoIdentity, Hash, Address } from "./types";
 
 // ============================================================================
 // NEW SERVICE-BASED ARCHITECTURE (Recommended)
@@ -40,14 +32,8 @@ export { VCIssuer } from "./services/VCIssuer";
 export { VCVerifier } from "./services/VCVerifier";
 
 // ============================================================================
-// LEGACY STATIC CLASS (for backward compatibility)
-// ============================================================================
-export { CryptoUtils } from "./CryptoUtils";
-
-// ============================================================================
 // DEFAULT EXPORT (convenience)
 // ============================================================================
-import { CryptoUtils } from "./CryptoUtils";
 import { VCIssuer } from "./services/VCIssuer";
 import { VCVerifier } from "./services/VCVerifier";
 import { ECDSACryptoService } from "./services/CryptoService";
@@ -58,9 +44,6 @@ import { OnChainService } from "./services/OnChainService";
  * Default export provides both legacy and new APIs
  */
 export default {
-  // Legacy static utilities
-  CryptoUtils,
-
   // New service classes
   VCIssuer,
   VCVerifier,
