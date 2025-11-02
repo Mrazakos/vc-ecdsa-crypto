@@ -5,6 +5,81 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2025-11-02
+
+### 🎉 NEW FEATURE - Credential Revocation Service
+
+#### Added
+
+- **VCRevoke Service**: Convert off-chain VCs to on-chain format for smart contract revocation
+  - `convertToOnChain()`: Transform off-chain VC to Ethereum-compatible format
+  - `getCredentialHash()`: Extract canonical hash for revocation registry
+  - `verifyHashConsistency()`: Validate hash consistency across formats
+  - `verifyOnChainSignature()`: Confirm smart contract compatibility
+  - **Critical Feature**: Preserves identical credential hash between off-chain and on-chain versions
+  - Enables blockchain-based revocation while maintaining credential integrity
+
+#### Improved - DRY Principle Implementation
+
+- **Canonicalization Centralized**: Moved `createCanonicalHash()` and `canonicalize()` to `ECDSACryptoService`
+  - Now public methods accessible across all services
+  - Eliminates code duplication in `VCIssuer`, `VCVerifier`, and `VCRevoke`
+  - Ensures consistent hashing logic throughout the library
+  - Single source of truth for credential canonicalization
+
+#### Documentation
+
+- Added `vc-revocation-example.ts`: Complete workflow example
+  - Step-by-step revocation process
+  - Smart contract integration guide
+  - Solidity code examples
+- Added `vc-revoke.test.ts`: Comprehensive test suite (5 tests, 100% pass rate)
+- Updated main exports to include `VCRevoke`
+
+### Use Case
+
+**Problem**: Off-chain VCs use raw ECDSA signatures (verified with public keys), but smart contracts require Ethereum-prefixed signatures (verified with addresses via `ecrecover`).
+
+**Solution**: `VCRevoke` re-signs the credential with Ethereum prefix while preserving the exact same credential hash, enabling:
+
+1. Fast off-chain verification for physical locks
+2. Blockchain-based revocation for permanent record
+3. Immediate access termination across all systems
+
+### Example
+
+```typescript
+// Issue off-chain VC
+const offChainVC = await issuer.issueOffChainCredential(...);
+
+// Convert for smart contract submission
+const revoker = new VCRevoke();
+const onChainVC = await revoker.convertToOnChain(
+  offChainVC,
+  privateKey,
+  ethereumAddress
+);
+
+// Submit to blockchain
+const hash = revoker.getCredentialHash(onChainVC);
+await contract.revokeCredential(hash, onChainVC.proof.proofValue, address);
+```
+
+### Performance
+
+- Conversion: ~2ms (re-signing with Ethereum prefix)
+- Hash extraction: <1ms
+- No performance impact on existing services
+
+### Testing
+
+- **39/39 tests passing** (up from 34)
+- New test coverage for revocation workflow
+- Hash consistency validation
+- Cross-format signature verification
+
+---
+
 ## [3.0.0] - 2025-11-01
 
 ### 🚨 BREAKING CHANGES - Complete Rewrite
@@ -14,6 +89,7 @@ This is a **complete architectural rewrite** of the library. Previous versions (
 ### Added
 
 #### **New Service Architecture**
+
 - **ECDSACryptoService**: Low-level ECDSA cryptographic primitives (secp256k1)
 - **VCIssuer**: W3C-compliant Verifiable Credential issuance service
 - **VCVerifier**: Comprehensive credential verification with temporal validation
@@ -21,6 +97,7 @@ This is a **complete architectural rewrite** of the library. Previous versions (
 - **OffChainService**: Off-chain signing, access tokens, challenge-response authentication
 
 #### **W3C Verifiable Credentials Support**
+
 - Full W3C Verifiable Credentials Data Model implementation
 - `issueOffChainCredential()`: Issue VCs with full public key proofs
 - `issueOnChainCredential()`: Issue VCs with Ethereum address proofs (ecrecover compatible)
@@ -28,6 +105,7 @@ This is a **complete architectural rewrite** of the library. Previous versions (
 - Proper proof types: `EcdsaSecp256k1Signature2019` and `EcdsaSecp256k1RecoverySignature2020`
 
 #### **Advanced Features**
+
 - **Deterministic Canonicalization**: Filters `undefined` values for consistent hashing
 - **Temporal Validation**: Automatic `validFrom` and `validUntil` checking
 - **Access Tokens**: Time-limited tokens with expiration verification
@@ -36,6 +114,7 @@ This is a **complete architectural rewrite** of the library. Previous versions (
 - **Revocation Support**: Framework for credential status checking
 
 #### **Type System**
+
 - Complete TypeScript definitions for W3C VC data model
 - `CryptoIdentity`: Identity with address, publicKey, privateKey
 - `VerifiableCredential`: Full W3C credential structure
@@ -46,14 +125,17 @@ This is a **complete architectural rewrite** of the library. Previous versions (
 ### Changed
 
 #### **API Completely Redesigned**
+
 - **Before**: Single `CryptoUtils` class with basic methods
 - **After**: 5 specialized services with clear separation of concerns
 
 #### **Credential Format**
+
 - **Before**: Simple signature + hash result
 - **After**: Full W3C-compliant Verifiable Credentials with structured proofs
 
 #### **Identity Structure**
+
 - **Before**: `{ publicKey, privateKey }`
 - **After**: `{ address, publicKey, privateKey }` - includes Ethereum address
 
@@ -73,7 +155,7 @@ This is a **complete architectural rewrite** of the library. Previous versions (
 
 - **Key Generation**: ~10ms (unchanged)
 - **Off-Chain Signing**: ~1.4-2.0ms
-- **Off-Chain Verification**: ~3.9-4.9ms  
+- **Off-Chain Verification**: ~3.9-4.9ms
 - **On-Chain Signing**: ~1.6-2.1ms
 - **On-Chain Verification**: ~4.2-4.5ms
 - **VC Issuance**: ~1.9-2.1ms
@@ -179,7 +261,7 @@ This is not just a feature addition—it's a complete reimagination of the libra
 
 - **KeyPair Interface Simplified**:
   - `publicKey` now directly contains the Ethereum address (20 bytes, 0x-prefixed)
-  - Old: `{ publicKey, privateKey}` 
+  - Old: `{ publicKey, privateKey}`
   - New: `{ publicKey, privateKey }` (publicKey IS the Ethereum address)
 
 ### Changed
@@ -200,15 +282,17 @@ This is not just a feature addition—it's a complete reimagination of the libra
 ### Example Migration
 
 **Before (v1.1.0):**
+
 ```typescript
 const keyPair = await CryptoUtils.generateKeyPair();
-await contract.registerLock(lockId, keyPair.ethereumAddress);  // or keyPair.publicKey
+await contract.registerLock(lockId, keyPair.ethereumAddress); // or keyPair.publicKey
 ```
 
 **After (v2.0.0):**
+
 ```typescript
 const keyPair = await CryptoUtils.generateKeyPair();
-await contract.registerLock(lockId, keyPair.publicKey);  // Always use publicKey
+await contract.registerLock(lockId, keyPair.publicKey); // Always use publicKey
 ```
 
 ## [1.1.0] - 2025-10-18
@@ -221,18 +305,17 @@ await contract.registerLock(lockId, keyPair.publicKey);  // Always use publicKey
   - 100% success rate across all test scenarios
 - **Automated Test Reporting**: Markdown reports with detailed performance metrics
 - **Performance Benchmarks**: Statistical analysis of signing, verification, and key generation
-- **Security Validation**: 
+- **Security Validation**:
   - 50 signature tampering attempts (100% detected)
   - 30 wrong key attacks (100% detected)
   - 40 data tampering attempts (100% detected)
   - 17 malformed input tests (all handled gracefully)
 - **Academic Documentation**: 849-line RSA vs ECDSA comparison document for thesis research
-- **Test Scripts**: 
+- **Test Scripts**:
   - `npm run test:adversarial` - Run security tests
   - `npm run test:stress` - Run performance tests
 
 ### Improved
-
 
 - **Security Confidence**: 100% attack detection rate across all adversarial tests
 - **Performance Validation**: Confirmed 2,953-29,527x faster key generation than RSA

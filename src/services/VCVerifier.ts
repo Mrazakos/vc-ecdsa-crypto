@@ -221,44 +221,12 @@ export class VCVerifier {
 
   /**
    * Create canonical hash (must match issuer's implementation)
+   * Delegates to ECDSACryptoService for consistent hashing
    *
    * @private
    */
   private createCanonicalHash(credential: Credential): string {
-    const canonical = this.canonicalize(credential);
-    return this.cryptoService.hash(canonical);
-  }
-
-  /**
-   * Canonicalize an object
-   * Filters out undefined values to match JSON.stringify behavior
-   *
-   * @private
-   */
-  private canonicalize(obj: unknown): string {
-    if (obj === null) return "null";
-    if (obj === undefined) return "undefined";
-    if (typeof obj !== "object") return JSON.stringify(obj);
-
-    if (Array.isArray(obj)) {
-      const items = obj.map((item) => this.canonicalize(item));
-      return `[${items.join(",")}]`;
-    }
-
-    // Sort keys alphabetically and filter out undefined values
-    // This matches JSON.stringify behavior where undefined properties are omitted
-    const sorted = Object.keys(obj as Record<string, unknown>)
-      .sort()
-      .filter((key) => {
-        const value = (obj as Record<string, unknown>)[key];
-        return value !== undefined;
-      })
-      .map((key) => {
-        const value = (obj as Record<string, unknown>)[key];
-        return `"${key}":${this.canonicalize(value)}`;
-      });
-
-    return `{${sorted.join(",")}}`;
+    return this.cryptoService.createCanonicalHash(credential);
   }
 
   /**

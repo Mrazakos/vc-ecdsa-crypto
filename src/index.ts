@@ -30,12 +30,14 @@ export { OnChainService } from "./services/OnChainService";
 // W3C VC issuing and verification
 export { VCIssuer } from "./services/VCIssuer";
 export { VCVerifier } from "./services/VCVerifier";
+export { VCRevoke } from "./services/VCRevoke";
 
 // ============================================================================
 // DEFAULT EXPORT (convenience)
 // ============================================================================
 import { VCIssuer } from "./services/VCIssuer";
 import { VCVerifier } from "./services/VCVerifier";
+import { VCRevoke } from "./services/VCRevoke";
 import { ECDSACryptoService } from "./services/CryptoService";
 import { OffChainService } from "./services/OffChainService";
 import { OnChainService } from "./services/OnChainService";
@@ -47,6 +49,7 @@ export default {
   // New service classes
   VCIssuer,
   VCVerifier,
+  VCRevoke,
   ECDSACryptoService,
   OffChainService,
   OnChainService,

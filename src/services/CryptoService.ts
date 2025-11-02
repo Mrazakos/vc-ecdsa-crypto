@@ -165,4 +165,71 @@ export class ECDSACryptoService extends CryptoService {
   hash(data: string): string {
     return ethers.keccak256(ethers.toUtf8Bytes(data));
   }
+
+  /**
+   * Create a canonical hash of an object for signing
+   * This ensures consistent hashing regardless of JSON property order
+   *
+   * CRITICAL: This must be deterministic!
+   * The same object must always produce the same hash.
+   *
+   * Used by VCIssuer, VCVerifier, and VCRevoke for consistent credential hashing.
+   *
+   * @param obj - Object to hash (typically a Credential)
+   * @returns Keccak-256 hash of the canonical representation
+   *
+   * @example
+   * ```typescript
+   * const crypto = new ECDSACryptoService();
+   * const credential = { ... };
+   * const hash = crypto.createCanonicalHash(credential);
+   * ```
+   */
+  createCanonicalHash(obj: unknown): string {
+    const canonical = this.canonicalize(obj);
+    return this.hash(canonical);
+  }
+
+  /**
+   * Canonicalize an object for deterministic hashing
+   * Sorts keys alphabetically and filters out undefined values
+   *
+   * This matches JSON.stringify behavior where undefined properties are omitted.
+   * Ensures the same object always produces the same canonical string.
+   *
+   * @param obj - Object to canonicalize
+   * @returns Canonical string representation
+   *
+   * @example
+   * ```typescript
+   * const crypto = new ECDSACryptoService();
+   * const canonical = crypto.canonicalize({ b: 2, a: 1, c: undefined });
+   * // Result: '{"a":1,"b":2}' (sorted keys, undefined filtered)
+   * ```
+   */
+  canonicalize(obj: unknown): string {
+    if (obj === null) return "null";
+    if (obj === undefined) return "undefined";
+    if (typeof obj !== "object") return JSON.stringify(obj);
+
+    if (Array.isArray(obj)) {
+      const items = obj.map((item) => this.canonicalize(item));
+      return `[${items.join(",")}]`;
+    }
+
+    // Sort keys alphabetically and filter out undefined values
+    // This matches JSON.stringify behavior where undefined properties are omitted
+    const sorted = Object.keys(obj as Record<string, unknown>)
+      .sort()
+      .filter((key) => {
+        const value = (obj as Record<string, unknown>)[key];
+        return value !== undefined;
+      })
+      .map((key) => {
+        const value = (obj as Record<string, unknown>)[key];
+        return `"${key}":${this.canonicalize(value)}`;
+      });
+
+    return `{${sorted.join(",")}}`;
+  }
 }
