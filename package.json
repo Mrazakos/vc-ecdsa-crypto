@@ -1,6 +1,6 @@
 {
   "name": "@mrazakos/vc-ecdsa-crypto",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Fast ECDSA cryptographic utilities for Verifiable Credentials - 100-1000x faster than RSA on mobile devices. Smart contract ready with Ethereum address-based public keys.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,8 +9,6 @@
     "dev": "tsc --watch",
     "prepublishOnly": "npm run build",
     "test": "npm run build && jest",
-    "test:adversarial": "npm run build && jest tests/adversarial-security.test.ts",
-    "test:stress": "npm run build && jest tests/comprehensive-stress.test.ts",
     "clean": "rimraf dist"
   },
   "keywords": [
