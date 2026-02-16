@@ -5,7 +5,7 @@ import {
   ECDSAProof,
   ISO8601DateTime,
 } from "../types/w3c-vc.types";
-import { ECDSACryptoService } from "./CryptoService";
+import { CryptoService, ECDSACryptoService } from "./CryptoService";
 import { OffChainService } from "./OffChainService";
 import { OnChainService } from "./OnChainService";
 
@@ -22,16 +22,101 @@ import { OnChainService } from "./OnChainService";
  * This service handles both.
  */
 export class VCVerifier {
-  private cryptoService: ECDSACryptoService;
-  private offChainService: OffChainService;
+  private cryptoService: CryptoService;
+  private offChainService?: OffChainService;
 
   constructor(
-    cryptoService?: ECDSACryptoService,
+    cryptoService?: CryptoService,
     offChainService?: OffChainService
   ) {
     this.cryptoService = cryptoService || new ECDSACryptoService();
-    this.offChainService =
-      offChainService || new OffChainService(this.cryptoService);
+    this.offChainService = offChainService;
+  }
+
+  /**
+   * Verify a Verifiable Credential using ANY crypto algorithm
+   * This method is algorithm-agnostic and works with ECDSA, RSA, or Post-Quantum
+   *
+   * @param vc - The verifiable credential to verify
+   * @param publicKey - Public key of the issuer (format depends on algorithm)
+   * @param options - Validation options
+   * @returns Verification result
+   *
+   * @example
+   * ```typescript
+   * const rsaCrypto = new RSACryptoService();
+   * const verifier = new VCVerifier(rsaCrypto);
+   * const result = await verifier.verifyCredential(
+   *   vc,
+   *   issuerPublicKey,
+   *   { checkExpiration: true }
+   * );
+   * if (result.verified) {
+   *   console.log("Credential is valid!");
+   * }
+   * ```
+   */
+  async verifyCredential(
+    vc: VerifiableCredential,
+    publicKey: string,
+    options: {
+      checkExpiration?: boolean;
+      checkNotBefore?: boolean;
+      currentTime?: Date;
+    } = {}
+  ): Promise<VerificationResult> {
+    try {
+      // Extract proof
+      const proof = this.extractProof(vc);
+      if (!proof) {
+        return {
+          verified: false,
+          error: "No proof found in credential",
+        };
+      }
+
+      // Recreate the credential without proof for verification
+      const { proof: _proof, ...credentialWithoutProof } = vc;
+      const credential = credentialWithoutProof as Credential;
+
+      // Create canonical hash (same as signing)
+      const credentialHash = this.createCanonicalHash(credential);
+
+      // Verify signature using the configured crypto service
+      const signatureValid = await this.cryptoService.verify(
+        credentialHash,
+        proof.proofValue,
+        publicKey
+      );
+
+      if (!signatureValid) {
+        return {
+          verified: false,
+          error: "Invalid signature",
+        };
+      }
+
+      // Perform validation checks
+      const validationResult = this.validateCredential(vc, options);
+      if (!validationResult.valid) {
+        return {
+          verified: false,
+          error: validationResult.reason,
+        };
+      }
+
+      // Success!
+      return {
+        verified: true,
+        verifiableCredential: vc,
+        details: this.extractCredentialDetails(vc),
+      };
+    } catch (error) {
+      return {
+        verified: false,
+        error: `Verification failed: ${error}`,
+      };
+    }
   }
 
   /**
@@ -70,6 +155,12 @@ export class VCVerifier {
     } = {}
   ): Promise<VerificationResult> {
     try {
+      if (!this.offChainService) {
+        throw new Error(
+          "OffChainService not initialized. Use verifyCredential() for generic crypto services."
+        );
+      }
+
       // Extract proof
       const proof = this.extractProof(vc);
       if (!proof) {

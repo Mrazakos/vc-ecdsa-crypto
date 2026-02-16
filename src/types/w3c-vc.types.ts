@@ -189,9 +189,19 @@ export interface Proof {
 /**
  * ECDSA Proof for our implementation
  * Uses compact signature format (r+s+v)
+ * 
+ * Extended to support multiple signature algorithms:
+ * - ECDSA (EcdsaSecp256k1*)
+ * - RSA (RsaSignature2018)
+ * - Post-Quantum (DataIntegrityProof for ML-DSA)
  */
 export interface ECDSAProof extends Proof {
-  type: "EcdsaSecp256k1Signature2019" | "EcdsaSecp256k1RecoverySignature2020";
+  type: 
+    | "EcdsaSecp256k1Signature2019" 
+    | "EcdsaSecp256k1RecoverySignature2020"
+    | "RsaSignature2018"
+    | "DataIntegrityProof"
+    | string; // Allow custom proof types for algorithm comparison
 
   /**
    * Nonce or challenge for replay protection

@@ -8,7 +8,7 @@ import {
   W3C_VC_CONTEXT_V2,
   ISO8601DateTime,
 } from "../types/w3c-vc.types";
-import { ECDSACryptoService } from "./CryptoService";
+import { CryptoService, ECDSACryptoService } from "./CryptoService";
 import { OffChainService } from "./OffChainService";
 import { OnChainService } from "./OnChainService";
 
@@ -32,20 +32,93 @@ import { OnChainService } from "./OnChainService";
  * with ANY field will invalidate the signature.
  */
 export class VCIssuer {
-  private cryptoService: ECDSACryptoService;
-  private offChainService: OffChainService;
-  private onChainService: OnChainService;
+  private cryptoService: CryptoService;
+  private offChainService?: OffChainService;
+  private onChainService?: OnChainService;
 
   constructor(
-    cryptoService?: ECDSACryptoService,
+    cryptoService?: CryptoService,
     offChainService?: OffChainService,
     onChainService?: OnChainService
   ) {
     this.cryptoService = cryptoService || new ECDSACryptoService();
-    this.offChainService =
-      offChainService || new OffChainService(this.cryptoService);
-    this.onChainService =
-      onChainService || new OnChainService(this.cryptoService);
+    this.offChainService = offChainService;
+    this.onChainService = onChainService;
+  }
+
+  /**
+   * Issue a W3C-compliant Verifiable Credential using ANY crypto algorithm
+   * This method is algorithm-agnostic and works with ECDSA, RSA, or Post-Quantum
+   *
+   * @param issuer - Issuer identifier (URL or DID)
+   * @param credentialSubject - Claims about the subject
+   * @param privateKey - Private key to sign with (format depends on algorithm)
+   * @param publicKey - Public key for verification (format depends on algorithm)
+   * @param options - Additional credential options
+   * @returns Signed Verifiable Credential
+   *
+   * @example
+   * ```typescript
+   * const rsaCrypto = new RSACryptoService();
+   * const issuer = new VCIssuer(rsaCrypto);
+   * const identity = await rsaCrypto.generateIdentity();
+   * const vc = await issuer.issueCredential(
+   *   { id: "did:example:issuer123" },
+   *   { id: "did:example:user456", accessLevel: "premium" },
+   *   identity.privateKey,
+   *   identity.publicKey,
+   *   { credentialTypes: ["AccessControlCredential"], validityDays: 30 }
+   * );
+   * ```
+   */
+  async issueCredential(
+    issuer: Issuer,
+    credentialSubject: CredentialSubject | CredentialSubject[],
+    privateKey: string,
+    publicKey: string,
+    options: CreateCredentialOptions & {
+      validityDays?: number;
+      proofType?: string; // Custom proof type for different algorithms
+    } = {}
+  ): Promise<VerifiableCredential> {
+    // Create the unsigned credential
+    const credential = this.createCredentialDocument(
+      issuer,
+      credentialSubject,
+      options
+    );
+
+    // Create canonical representation for signing
+    const credentialHash = this.createCanonicalHash(credential);
+
+    // Sign using the configured crypto service
+    const signature = await this.cryptoService.sign(credentialHash, privateKey);
+
+    // Determine proof type based on crypto service
+    const proofType =
+      options.proofType ||
+      (this.cryptoService.constructor.name === "ECDSACryptoService"
+        ? "EcdsaSecp256k1Signature2020"
+        : this.cryptoService.constructor.name === "RSACryptoService"
+        ? "RsaSignature2018"
+        : "DataIntegrityProof");
+
+    // Create proof object
+    const proof: ECDSAProof = {
+      type: proofType,
+      created: new Date().toISOString(),
+      proofPurpose: "assertionMethod",
+      verificationMethod: `${
+        typeof issuer === "string" ? issuer : issuer.id
+      }#keys-1`,
+      proofValue: signature,
+    };
+
+    // Return signed credential
+    return {
+      ...credential,
+      proof,
+    };
   }
 
   /**
@@ -87,6 +160,12 @@ export class VCIssuer {
   ): Promise<VerifiableCredential> {
     if (!options.publicKey) {
       throw new Error("publicKey is required for off-chain credentials");
+    }
+
+    if (!this.offChainService) {
+      throw new Error(
+        "OffChainService not initialized. Use issueCredential() for generic crypto services."
+      );
     }
 
     // Create the unsigned credential
@@ -158,6 +237,12 @@ export class VCIssuer {
   ): Promise<VerifiableCredential> {
     if (!options.ethereumAddress) {
       throw new Error("ethereumAddress is required for on-chain credentials");
+    }
+
+    if (!this.onChainService) {
+      throw new Error(
+        "OnChainService not initialized. Use issueCredential() for generic crypto services."
+      );
     }
 
     // Create the unsigned credential

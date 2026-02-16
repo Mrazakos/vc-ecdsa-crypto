@@ -22,6 +22,8 @@ export { CryptoIdentity, Hash, Address } from "./types";
 
 // Core crypto services
 export { CryptoService, ECDSACryptoService } from "./services/CryptoService";
+export { RSACryptoService } from "./services/RSACryptoService";
+export { PQCryptoService } from "./services/PQCryptoService";
 
 // Separation of concerns: on-chain vs off-chain
 export { OffChainService } from "./services/OffChainService";

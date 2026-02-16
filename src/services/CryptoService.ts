@@ -50,6 +50,20 @@ export abstract class CryptoService {
    * @returns Hash string
    */
   abstract hash(data: string): string;
+
+  /**
+   * Canonicalize an object for deterministic hashing/signing
+   * @param obj - Object to canonicalize
+   * @returns Canonical string representation
+   */
+  abstract canonicalize(obj: unknown): string;
+
+  /**
+   * Create a canonical hash of an object for signing
+   * @param obj - Object to hash
+   * @returns Hash string
+   */
+  abstract createCanonicalHash(obj: unknown): string;
 }
 
 /**
@@ -167,30 +181,6 @@ export class ECDSACryptoService extends CryptoService {
   }
 
   /**
-   * Create a canonical hash of an object for signing
-   * This ensures consistent hashing regardless of JSON property order
-   *
-   * CRITICAL: This must be deterministic!
-   * The same object must always produce the same hash.
-   *
-   * Used by VCIssuer, VCVerifier, and VCRevoke for consistent credential hashing.
-   *
-   * @param obj - Object to hash (typically a Credential)
-   * @returns Keccak-256 hash of the canonical representation
-   *
-   * @example
-   * ```typescript
-   * const crypto = new ECDSACryptoService();
-   * const credential = { ... };
-   * const hash = crypto.createCanonicalHash(credential);
-   * ```
-   */
-  createCanonicalHash(obj: unknown): string {
-    const canonical = this.canonicalize(obj);
-    return this.hash(canonical);
-  }
-
-  /**
    * Canonicalize an object for deterministic hashing
    * Sorts keys alphabetically and filters out undefined values
    *
@@ -231,5 +221,28 @@ export class ECDSACryptoService extends CryptoService {
       });
 
     return `{${sorted.join(",")}}`;
+  }
+  /**
+   * Create a canonical hash of an object for signing
+   * This ensures consistent hashing regardless of JSON property order
+   *
+   * CRITICAL: This must be deterministic!
+   * The same object must always produce the same hash.
+   *
+   * Used by VCIssuer, VCVerifier, and VCRevoke for consistent credential hashing.
+   *
+   * @param obj - Object to hash (typically a Credential)
+   * @returns Keccak-256 hash of the canonical representation
+   *
+   * @example
+   * ```typescript
+   * const crypto = new ECDSACryptoService();
+   * const credential = { ... };
+   * const hash = crypto.createCanonicalHash(credential);
+   * ```
+   */
+  createCanonicalHash(obj: unknown): string {
+    const canonical = this.canonicalize(obj);
+    return this.hash(canonical);
   }
 }
