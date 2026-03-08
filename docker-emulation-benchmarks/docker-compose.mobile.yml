@@ -1,0 +1,98 @@
+version: "3.8"
+
+services:
+  # ========================================================================
+  # Low-End Mobile Device (e.g., Android Go, budget phones)
+  # Examples: Samsung Galaxy A03, older Android devices
+  # ========================================================================
+  mobile-low-end:
+    build:
+      context: ..
+      dockerfile: docker-emulation-benchmarks/Dockerfile.mobile
+
+    container_name: mobile-crypto-low-end
+
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0" # Dual-core processor
+          memory: 2G # 2GB RAM
+        reservations:
+          cpus: "1.0"
+          memory: 1G
+
+    volumes:
+      - ./benchmarks:/app/benchmarks
+      - ../src:/app/src
+      - ./mobile-benchmark-results:/app/mobile-benchmark-results
+
+    environment:
+      - DEVICE_TIER=low-end
+      - BENCHMARK_ITERATIONS=100
+
+    stdin_open: true
+    tty: true
+
+  # ========================================================================
+  # Mid-Range Mobile Device (e.g., typical smartphones)
+  # Examples: Samsung Galaxy A52, Google Pixel 6a, iPhone SE
+  # ========================================================================
+  mobile-mid-range:
+    build:
+      context: ..
+      dockerfile: docker-emulation-benchmarks/Dockerfile.mobile
+
+    container_name: mobile-crypto-mid-range
+
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0" # Quad-core processor
+          memory: 4G # 4GB RAM
+        reservations:
+          cpus: "2.0"
+          memory: 2G
+
+    volumes:
+      - ./benchmarks:/app/benchmarks
+      - ../src:/app/src
+      - ./mobile-benchmark-results:/app/mobile-benchmark-results
+
+    environment:
+      - DEVICE_TIER=mid-range
+      - BENCHMARK_ITERATIONS=200
+
+    stdin_open: true
+    tty: true
+
+  # ========================================================================
+  # High-End Mobile Device (e.g., flagship phones)
+  # Examples: Samsung Galaxy S24, iPhone 15 Pro, Google Pixel 8 Pro
+  # ========================================================================
+  mobile-high-end:
+    build:
+      context: ..
+      dockerfile: docker-emulation-benchmarks/Dockerfile.mobile
+
+    container_name: mobile-crypto-high-end
+
+    deploy:
+      resources:
+        limits:
+          cpus: "8.0" # Octa-core processor
+          memory: 8G # 8GB RAM
+        reservations:
+          cpus: "4.0"
+          memory: 4G
+
+    volumes:
+      - ./benchmarks:/app/benchmarks
+      - ../src:/app/src
+      - ./mobile-benchmark-results:/app/mobile-benchmark-results
+
+    environment:
+      - DEVICE_TIER=high-end
+      - BENCHMARK_ITERATIONS=300
+
+    stdin_open: true
+    tty: true

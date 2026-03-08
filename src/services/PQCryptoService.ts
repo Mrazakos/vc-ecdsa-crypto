@@ -1,26 +1,29 @@
-import { ml_dsa65 } from "@noble/post-quantum/ml-dsa";
+import { ml_dsa44 } from "@noble/post-quantum/ml-dsa";
 import { CryptoService } from "./CryptoService";
 import { CryptoIdentity } from "../types";
 import { createHash } from "crypto";
 
 /**
- * Post-Quantum Cryptographic Service using ML-DSA-65 (Dilithium3)
+ * Post-Quantum Cryptographic Service using ML-DSA-44 (Dilithium2)
  *
  * Implementation using CRYSTALS-Dilithium (NIST-selected post-quantum signature algorithm).
- * ML-DSA-65 (formerly Dilithium3) provides security level 3 (equivalent to AES-192).
+ * ML-DSA-44 (formerly Dilithium2) provides security level 2 (equivalent to AES-128).
  *
  * Key characteristics:
  * - Resistant to quantum computer attacks (Shor's algorithm)
- * - Public key: 1,952 bytes
- * - Signature: ~3,309 bytes (much larger than ECDSA/RSA)
- * - Fast verification, moderate signing speed
+ * - Public key: 1,312 bytes (raw) → ~1,750 bytes (base64)
+ * - Signature: ~2,420 bytes (raw) → ~3,227 bytes (base64)
+ * - Fast verification and signing speed
  * - NIST standardized (FIPS 204)
+ * - Uses Base64 encoding for 33% size efficiency vs hex
  *
- * Use case: Future-proof cryptography for long-term credential validity
+ * Use case: Future-proof cryptography for long-term credential validity with better performance
+ *
+ * Note: Uses Base64 encoding (not hex) since PQ signatures don't need Ethereum compatibility
  */
 export class PQCryptoService extends CryptoService {
   /**
-   * Generate ML-DSA-65 key pair
+   * Generate ML-DSA-44 key pair
    * @returns CryptoIdentity with hex-encoded keys
    */
   async generateIdentity(): Promise<CryptoIdentity> {
@@ -35,84 +38,79 @@ export class PQCryptoService extends CryptoService {
         nodeCrypto.randomFillSync(seed);
       }
 
-      // Generate ML-DSA-65 key pair
-      const keypair = ml_dsa65.keygen(seed);
+      // Generate ML-DSA-44 key pair
+      const keypair = ml_dsa44.keygen(seed);
       const secretKey = keypair.secretKey;
       const publicKey = keypair.publicKey;
 
-      // Convert to hex for storage/transmission
-      const privateKeyHex = "0x" + Buffer.from(secretKey).toString("hex");
-      const publicKeyHex = "0x" + Buffer.from(publicKey).toString("hex");
+      // Convert to Base64 for efficient storage/transmission (33% smaller than hex)
+      const privateKeyBase64 = Buffer.from(secretKey).toString("base64");
+      const publicKeyBase64 = Buffer.from(publicKey).toString("base64");
 
       // Create pseudo-address from public key hash for consistency with other services
       const addressHash = createHash("sha256").update(publicKey).digest("hex");
 
       return {
-        privateKey: privateKeyHex,
-        publicKey: publicKeyHex,
+        privateKey: privateKeyBase64,
+        publicKey: publicKeyBase64,
         address: `0x${addressHash.substring(0, 40)}`, // 20-byte address format
       };
     } catch (error) {
-      throw new Error(`ML-DSA-65 key generation failed: ${error}`);
+      throw new Error(`ML-DSA-44 key generation failed: ${error}`);
     }
   }
 
   /**
-   * Sign data using ML-DSA-65
+   * Sign data using ML-DSA-44
    * @param data - Hash string to sign (hex format)
-   * @param privateKey - Hex-encoded ML-DSA-65 secret key
-   * @returns Hex-encoded signature
+   * @param privateKey - Base64-encoded ML-DSA-44 secret key
+   * @returns Base64-encoded signature
    */
   async sign(data: string, privateKey: string): Promise<string> {
     try {
-      // Convert hex private key to Uint8Array
-      const secretKey = new Uint8Array(
-        Buffer.from(privateKey.replace("0x", ""), "hex")
-      );
+      // Convert base64 private key to Uint8Array
+      const secretKey = new Uint8Array(Buffer.from(privateKey, "base64"));
 
-      // Convert data hash to bytes
+      // Convert data hash to bytes (hash is still hex with 0x prefix for consistency)
       const dataBytes = new Uint8Array(
-        Buffer.from(data.replace("0x", ""), "hex")
+        Buffer.from(data.replace("0x", ""), "hex"),
       );
 
-      // Sign using ML-DSA-65
-      const signature = ml_dsa65.sign(secretKey, dataBytes);
+      // Sign using ML-DSA-44
+      const signature = ml_dsa44.sign(secretKey, dataBytes);
 
-      // Return hex-encoded signature
-      return "0x" + Buffer.from(signature).toString("hex");
+      // Return base64-encoded signature (33% smaller than hex)
+      return Buffer.from(signature).toString("base64");
     } catch (error) {
-      throw new Error(`ML-DSA-65 signing failed: ${error}`);
+      throw new Error(`ML-DSA-44 signing failed: ${error}`);
     }
   }
 
   /**
-   * Verify ML-DSA-65 signature
+   * Verify ML-DSA-44 signature
    * @param data - Original hash string (hex format)
-   * @param signature - Hex-encoded signature
-   * @param publicKey - Hex-encoded ML-DSA-65 public key
+   * @param signature - Base64-encoded signature
+   * @param publicKey - Base64-encoded ML-DSA-44 public key
    * @returns True if signature is valid
    */
   async verify(
     data: string,
     signature: string,
-    publicKey: string
+    publicKey: string,
   ): Promise<boolean> {
     try {
-      // Convert hex inputs to Uint8Arrays
-      const publicKeyBytes = new Uint8Array(
-        Buffer.from(publicKey.replace("0x", ""), "hex")
-      );
-      const signatureBytes = new Uint8Array(
-        Buffer.from(signature.replace("0x", ""), "hex")
-      );
+      // Convert base64 inputs to Uint8Arrays
+      const publicKeyBytes = new Uint8Array(Buffer.from(publicKey, "base64"));
+      const signatureBytes = new Uint8Array(Buffer.from(signature, "base64"));
+      // Data hash is still hex format for consistency across algorithms
       const dataBytes = new Uint8Array(
-        Buffer.from(data.replace("0x", ""), "hex")
+        Buffer.from(data.replace("0x", ""), "hex"),
       );
 
-      // Verify using ML-DSA-65
-      return ml_dsa65.verify(publicKeyBytes, dataBytes, signatureBytes);
+      // Verify using ML-DSA-44
+      return ml_dsa44.verify(publicKeyBytes, dataBytes, signatureBytes);
     } catch (error) {
-      console.error("ML-DSA-65 verification failed:", error);
+      console.error("ML-DSA-44 verification failed:", error);
       return false;
     }
   }

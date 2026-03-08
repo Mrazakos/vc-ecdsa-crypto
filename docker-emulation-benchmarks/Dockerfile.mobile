@@ -1,0 +1,43 @@
+# Dockerfile for Mobile Runtime Environment Simulation
+# Simulates Android/iOS mobile app JavaScript runtime (React Native, Capacitor, Cordova)
+# Base: Node.js Alpine (lightweight, similar to mobile JavaScript engines)
+
+FROM node:20-alpine
+
+# Mobile device metadata
+LABEL description="Mobile runtime environment for cryptographic testing"
+LABEL device.type="mobile"
+LABEL device.tier="mid-range"
+LABEL runtime="Node.js v8 (Android-like)"
+
+# Set working directory
+WORKDIR /app
+
+# Install minimal build dependencies for native crypto modules
+# Alpine uses musl libc (lighter than glibc, closer to mobile constraints)
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    git
+
+# Copy package files for dependency installation
+COPY package*.json ./
+
+# Install dependencies
+# --omit=dev for production-like mobile bundle
+RUN npm ci --also=dev || npm install
+
+# Copy application source
+COPY . .
+
+# Build TypeScript to JavaScript
+RUN npm run build
+
+# Set environment variables for mobile-like runtime
+ENV NODE_ENV=production
+ENV UV_THREADPOOL_SIZE=4
+ENV NODE_OPTIONS="--max-old-space-size=512"
+
+# Default command - mobile benchmark
+CMD ["node", "--expose-gc", "benchmarks/mobile-benchmark.js"]

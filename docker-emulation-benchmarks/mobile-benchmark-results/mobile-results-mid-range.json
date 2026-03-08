@@ -1,0 +1,80 @@
+{
+  "deviceTier": "mid-range",
+  "timestamp": "2026-03-08T15:17:33.457Z",
+  "results": {
+    "ECDSA": {
+      "algorithm": "ECDSA secp256k1",
+      "description": "Standard for mobile wallets (Bitcoin, Ethereum)",
+      "walletCreation": {
+        "avgTime": 6.808625294999985,
+        "minTime": 5.093784999999571,
+        "maxTime": 11.881380999999976,
+        "medianTime": 6.622023499999955,
+        "stdDev": 1.3036188265730886,
+        "p95": 9.350468999999975,
+        "p99": 11.403054000000111,
+        "avgMemory": 2485963.8
+      },
+      "credentialSigning": {
+        "avgTime": 2.104620179999988,
+        "minTime": 1.0659679999998843,
+        "maxTime": 7.193761999999879,
+        "medianTime": 1.981939999999895,
+        "stdDev": 0.6757329541560079,
+        "p95": 3.2104589999999007,
+        "p99": 4.344153000000006,
+        "avgMemory": 651766.36
+      },
+      "rapidSigning": {
+        "avgBatchTime": 12.284750450000024,
+        "avgPerSignature": 1.2284750450000024
+      },
+      "sizes": {
+        "publicKeySize": 132,
+        "privateKeySize": 66,
+        "signatureSize": 132,
+        "credentialSize": 523,
+        "nfcTransferTime": 1.2334905660377358,
+        "bluetoothTransferTime": 0.2615,
+        "fitsInQR": true
+      }
+    },
+    "ML-DSA-44": {
+      "algorithm": "ML-DSA-44 (Dilithium2)",
+      "description": "Post-Quantum signature scheme",
+      "walletCreation": {
+        "avgTime": 2.8719747549999877,
+        "minTime": 2.16242499999953,
+        "maxTime": 5.281847999999627,
+        "medianTime": 2.7666919999996935,
+        "stdDev": 0.465308410012169,
+        "p95": 3.621692000000621,
+        "p99": 4.795955000000049,
+        "avgMemory": 115891.8
+      },
+      "credentialSigning": {
+        "avgTime": 7.188271590000004,
+        "minTime": 2.959410999999818,
+        "maxTime": 21.485756999999467,
+        "medianTime": 6.112855000000309,
+        "stdDev": 3.483903920187876,
+        "p95": 13.725437000000056,
+        "p99": 17.120081000000027,
+        "avgMemory": 466675.72
+      },
+      "rapidSigning": {
+        "avgBatchTime": 66.6917562499998,
+        "avgPerSignature": 6.66917562499998
+      },
+      "sizes": {
+        "publicKeySize": 2626,
+        "privateKeySize": 5122,
+        "signatureSize": 4842,
+        "credentialSize": 5224,
+        "nfcTransferTime": 12.320754716981131,
+        "bluetoothTransferTime": 2.612,
+        "fitsInQR": false
+      }
+    }
+  }
+}
