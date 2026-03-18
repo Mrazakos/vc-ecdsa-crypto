@@ -27,7 +27,7 @@ const { ECDSACryptoService, PQCryptoService, VCIssuer } = require("../dist");
 const DEVICE_TIER = process.env.DEVICE_TIER || "mid-range";
 const CONFIG = {
   iterations: parseInt(process.env.BENCHMARK_ITERATIONS) || 200,
-  warmupIterations: 10,
+  warmupIterations: 15,
   algorithms: ["ECDSA", "ML-DSA-44"],
   outputDir: "./mobile-benchmark-results",
   outputFile: `mobile-results-${DEVICE_TIER}.json`,
@@ -63,8 +63,6 @@ async function testMobileWalletCreation(cryptoService, algorithmName) {
   console.log(`\n📱 [Mobile Wallet] ${algorithmName} Identity Creation...`);
 
   for (let i = 0; i < CONFIG.iterations; i++) {
-    if (global.gc) global.gc();
-
     const memBefore = process.memoryUsage().heapUsed;
     const start = performance.now();
 
@@ -102,8 +100,6 @@ async function testCredentialSigning(cryptoService, algorithmName) {
   console.log(`\n✍️  [Mobile App] ${algorithmName} Credential Signing...`);
 
   for (let i = 0; i < CONFIG.iterations; i++) {
-    if (global.gc) global.gc();
-
     const memBefore = process.memoryUsage().heapUsed;
     const start = performance.now();
 
@@ -162,8 +158,6 @@ async function testRapidSigning(cryptoService, algorithmName) {
     batch < Math.floor(CONFIG.iterations / batchSize);
     batch++
   ) {
-    if (global.gc) global.gc();
-
     const start = performance.now();
 
     // Sign multiple credentials rapidly
@@ -353,6 +347,7 @@ async function runMobileBenchmark() {
         p95: percentile(walletCreation.times, 0.95),
         p99: percentile(walletCreation.times, 0.99),
         avgMemory: avg(walletCreation.memoryUsage),
+        times: walletCreation.times, // Raw timing data for ANOVA
       },
       credentialSigning: {
         avgTime: avg(credentialSigning.times),
@@ -363,6 +358,7 @@ async function runMobileBenchmark() {
         p95: percentile(credentialSigning.times, 0.95),
         p99: percentile(credentialSigning.times, 0.99),
         avgMemory: avg(credentialSigning.memoryUsage),
+        times: credentialSigning.times, // Raw timing data for ANOVA
       },
       rapidSigning: {
         avgBatchTime: avg(rapidSigning.batchTimes),

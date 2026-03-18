@@ -1,25 +1,14 @@
-version: "3.8"
-
 services:
   # IoT Edge Device Emulator - Resource-constrained testing environment
   pqc-benchmark:
+    cpus: 0.5
+    mem_limit: 1028m
+    cpuset: "0"
     build:
       context: ..
       dockerfile: docker-emulation-benchmarks/Dockerfile
 
     container_name: iot-crypto-benchmark
-
-    # Resource constraints to emulate Raspberry Pi Zero W
-    # CPU: ARM11 @ 1GHz (single core) - throttled to 0.5 cores
-    # RAM: 512MB total
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5" # 50% of one CPU core
-          memory: 512M # 512 megabytes RAM
-        reservations:
-          cpus: "0.25" # Minimum guaranteed CPU
-          memory: 256M # Minimum guaranteed memory
 
     # Mount source code for live development
     volumes:

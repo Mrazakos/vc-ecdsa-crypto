@@ -62,9 +62,6 @@ async function testKeyGeneration(cryptoService, algorithmName) {
   console.log(`\n🔑 Testing ${algorithmName} Key Generation...`);
 
   for (let i = 0; i < CONFIG.iterations; i++) {
-    // Force GC if available
-    if (global.gc) global.gc();
-
     const start = performance.now();
     await cryptoService.generateIdentity();
     const end = performance.now();
@@ -90,8 +87,6 @@ async function testVCIssuance(cryptoService, algorithmName) {
   console.log(`\n✍️  Testing ${algorithmName} VC Issuance (Signing)...`);
 
   for (let i = 0; i < CONFIG.iterations; i++) {
-    if (global.gc) global.gc();
-
     const start = performance.now();
 
     await issuer.issueCredential(
@@ -143,8 +138,6 @@ async function testVCVerification(cryptoService, algorithmName) {
   console.log(`\n✅ Testing ${algorithmName} VC Verification...`);
 
   for (let i = 0; i < CONFIG.iterations; i++) {
-    if (global.gc) global.gc();
-
     const start = performance.now();
 
     await verifier.verifyCredential(vc, identity.publicKey, {
@@ -231,8 +224,6 @@ async function testSmartLockAccess(
   );
 
   for (let i = 0; i < CONFIG.iterations; i++) {
-    if (global.gc) global.gc();
-
     // Simulate NFC transmission time
     const transmissionTime =
       ((credentialSize * 8) / (NFC_SPEED_KBPS * 1000)) * 1000 + NFC_OVERHEAD_MS;
@@ -320,6 +311,7 @@ async function runBenchmarkSuite() {
     timestamp: new Date().toISOString(),
     testConfig: {
       iterations: CONFIG.iterations,
+      warmupIterations: CONFIG.warmupIterations,
       cpuLimit: "0.5 cores",
       memoryLimit: "512MB",
       nodeVersion: process.version,
@@ -718,7 +710,7 @@ This benchmark was conducted in a Docker container with resource constraints mat
 All tests followed the same protocol:
 1. **${testConfig.iterations} iterations** per operation for statistical significance
 2. **${testConfig.warmupIterations} warmup iterations** to stabilize JIT compilation
-3. Garbage collection forced before each measurement (when --expose-gc is used)
+3. No forced garbage collection during measured loops (runtime-managed GC)
 4. Statistical analysis includes:
    - Central tendency: mean, median
    - Spread: standard deviation, min, max

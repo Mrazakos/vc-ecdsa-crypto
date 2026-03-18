@@ -90,12 +90,16 @@ export class ECDSACryptoService extends CryptoService {
    */
   async generateIdentity(): Promise<CryptoIdentity> {
     try {
-      const wallet = ethers.Wallet.createRandom();
+      // Research-focused keygen path: generate raw secp256k1 material directly
+      // to avoid HD wallet/mnemonic overhead in algorithm comparisons.
+      const privateKey = ethers.hexlify(ethers.randomBytes(32));
+      const publicKey = SigningKey.computePublicKey(privateKey, false);
+      const address = ethers.computeAddress(publicKey);
 
       return {
-        privateKey: wallet.privateKey,
-        publicKey: ethers.SigningKey.computePublicKey(wallet.publicKey, false),
-        address: wallet.address,
+        privateKey,
+        publicKey,
+        address,
       };
     } catch (error) {
       throw new Error(`ECDSA key generation failed: ${error}`);

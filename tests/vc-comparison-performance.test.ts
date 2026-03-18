@@ -12,7 +12,7 @@ import {
 /**
  * PERFORMANCE COMPARISON TEST
  *
- * Compares ECDSA, RSA-PSS 2048, and ML-DSA-65 algorithms
+ * Compares ECDSA, RSA-PSS 2048, and ML-DSA-44 algorithms
  * for Verifiable Credentials:
  *
  * 1. Key Generation Performance
@@ -41,7 +41,7 @@ interface ComparisonResults {
   algorithms: {
     ecdsa: AlgorithmMetrics;
     rsa2048: AlgorithmMetrics;
-    dilithium3: AlgorithmMetrics;
+    dilithium2: AlgorithmMetrics;
   };
   summary: {
     fastest: {
@@ -58,7 +58,7 @@ interface ComparisonResults {
 }
 
 describe("Verifiable Credential Performance Comparison", () => {
-  const ITERATIONS = 30;
+  const ITERATIONS = 200;
 
   let results: ComparisonResults;
 
@@ -87,8 +87,8 @@ describe("Verifiable Credential Performance Comparison", () => {
           verifyTime: [],
           credentialSize: [],
         },
-        dilithium3: {
-          name: "ML-DSA-65 (Dilithium3)",
+        dilithium2: {
+          name: "ML-DSA-44 (Dilithium2)",
           keySize: "1952 bytes public, 4000 bytes secret",
           signatureSize: 0,
           keyGenTime: [],
@@ -123,8 +123,8 @@ describe("Verifiable Credential Performance Comparison", () => {
       results.algorithms.ecdsa.keyGenTime = times;
       console.log(
         `ECDSA Key Gen: ${avg(times).toFixed(3)}ms avg (${min(times).toFixed(
-          2
-        )}ms - ${max(times).toFixed(2)}ms)`
+          2,
+        )}ms - ${max(times).toFixed(2)}ms)`,
       );
     });
 
@@ -142,12 +142,12 @@ describe("Verifiable Credential Performance Comparison", () => {
       results.algorithms.rsa2048.keyGenTime = times;
       console.log(
         `RSA-2048 Key Gen: ${avg(times).toFixed(3)}ms avg (${min(times).toFixed(
-          2
-        )}ms - ${max(times).toFixed(2)}ms)`
+          2,
+        )}ms - ${max(times).toFixed(2)}ms)`,
       );
     });
 
-    test("ML-DSA-65 key generation", async () => {
+    test("ML-DSA-44 key generation", async () => {
       const crypto = new PQCryptoService();
       const times: number[] = [];
 
@@ -158,11 +158,11 @@ describe("Verifiable Credential Performance Comparison", () => {
         times.push(end - start);
       }
 
-      results.algorithms.dilithium3.keyGenTime = times;
+      results.algorithms.dilithium2.keyGenTime = times;
       console.log(
-        `ML-DSA-65 Key Gen: ${avg(times).toFixed(3)}ms avg (${min(
-          times
-        ).toFixed(2)}ms - ${max(times).toFixed(2)}ms)`
+        `ML-DSA-44 Key Gen: ${avg(times).toFixed(3)}ms avg (${min(
+          times,
+        ).toFixed(2)}ms - ${max(times).toFixed(2)}ms)`,
       );
     });
   });
@@ -175,14 +175,14 @@ describe("Verifiable Credential Performance Comparison", () => {
     test("RSA-2048 VC issuance", async () => {
       await testVCIssuance(
         new RSACryptoService(2048),
-        results.algorithms.rsa2048
+        results.algorithms.rsa2048,
       );
     });
 
-    test("ML-DSA-65 VC issuance", async () => {
+    test("ML-DSA-44 VC issuance", async () => {
       await testVCIssuance(
         new PQCryptoService(),
-        results.algorithms.dilithium3
+        results.algorithms.dilithium2,
       );
     });
   });
@@ -191,21 +191,21 @@ describe("Verifiable Credential Performance Comparison", () => {
     test("ECDSA VC verification", async () => {
       await testVCVerification(
         new ECDSACryptoService(),
-        results.algorithms.ecdsa
+        results.algorithms.ecdsa,
       );
     });
 
     test("RSA-2048 VC verification", async () => {
       await testVCVerification(
         new RSACryptoService(2048),
-        results.algorithms.rsa2048
+        results.algorithms.rsa2048,
       );
     });
 
-    test("ML-DSA-65 VC verification", async () => {
+    test("ML-DSA-44 VC verification", async () => {
       await testVCVerification(
         new PQCryptoService(),
-        results.algorithms.dilithium3
+        results.algorithms.dilithium2,
       );
     });
   });
@@ -215,17 +215,17 @@ describe("Verifiable Credential Performance Comparison", () => {
       await analyzeSizes(
         new ECDSACryptoService(),
         results.algorithms.ecdsa,
-        "ECDSA"
+        "ECDSA",
       );
       await analyzeSizes(
         new RSACryptoService(2048),
         results.algorithms.rsa2048,
-        "RSA-2048"
+        "RSA-2048",
       );
       await analyzeSizes(
         new PQCryptoService(),
-        results.algorithms.dilithium3,
-        "ML-DSA-65"
+        results.algorithms.dilithium2,
+        "ML-DSA-44",
       );
 
       // Determine smallest
@@ -233,8 +233,8 @@ describe("Verifiable Credential Performance Comparison", () => {
         { name: "ECDSA", size: results.algorithms.ecdsa.signatureSize },
         { name: "RSA-2048", size: results.algorithms.rsa2048.signatureSize },
         {
-          name: "ML-DSA-65",
-          size: results.algorithms.dilithium3.signatureSize,
+          name: "ML-DSA-44",
+          size: results.algorithms.dilithium2.signatureSize,
         },
       ];
       sizes.sort((a, b) => a.size - b.size);
@@ -247,7 +247,7 @@ describe("Verifiable Credential Performance Comparison", () => {
   // Helper functions
   async function testVCIssuance(
     crypto: CryptoService,
-    metrics: AlgorithmMetrics
+    metrics: AlgorithmMetrics,
   ) {
     const issuer = new VCIssuer(crypto);
     const identity = await crypto.generateIdentity();
@@ -268,7 +268,7 @@ describe("Verifiable Credential Performance Comparison", () => {
         {
           credentialTypes: ["AccessControlCredential"],
           validityDays: 30,
-        }
+        },
       );
 
       const end = performance.now();
@@ -278,14 +278,14 @@ describe("Verifiable Credential Performance Comparison", () => {
     metrics.signTime = times;
     console.log(
       `${metrics.name} Signing: ${avg(times).toFixed(3)}ms avg (${min(
-        times
-      ).toFixed(2)}ms - ${max(times).toFixed(2)}ms)`
+        times,
+      ).toFixed(2)}ms - ${max(times).toFixed(2)}ms)`,
     );
   }
 
   async function testVCVerification(
     crypto: CryptoService,
-    metrics: AlgorithmMetrics
+    metrics: AlgorithmMetrics,
   ) {
     const issuer = new VCIssuer(crypto);
     const verifier = new VCVerifier(crypto);
@@ -296,7 +296,7 @@ describe("Verifiable Credential Performance Comparison", () => {
       { id: "did:example:user456", accessLevel: "premium" },
       identity.privateKey,
       identity.publicKey,
-      { validityDays: 30 }
+      { validityDays: 30 },
     );
 
     const times: number[] = [];
@@ -315,15 +315,15 @@ describe("Verifiable Credential Performance Comparison", () => {
     metrics.verifyTime = times;
     console.log(
       `${metrics.name} Verification: ${avg(times).toFixed(3)}ms avg (${min(
-        times
-      ).toFixed(2)}ms - ${max(times).toFixed(2)}ms)`
+        times,
+      ).toFixed(2)}ms - ${max(times).toFixed(2)}ms)`,
     );
   }
 
   async function analyzeSizes(
     crypto: CryptoService,
     metrics: AlgorithmMetrics,
-    name: string
+    name: string,
   ) {
     const issuer = new VCIssuer(crypto);
     const identity = await crypto.generateIdentity();
@@ -332,7 +332,7 @@ describe("Verifiable Credential Performance Comparison", () => {
       { id: "did:example:issuer123" },
       { id: "did:example:user456", accessLevel: "premium" },
       identity.privateKey,
-      identity.publicKey
+      identity.publicKey,
     );
 
     const proof = Array.isArray(vc.proof) ? vc.proof[0] : vc.proof;
@@ -376,23 +376,23 @@ describe("Verifiable Credential Performance Comparison", () => {
       { name: "ECDSA", time: avg(results.algorithms.ecdsa.keyGenTime) },
       { name: "RSA-2048", time: avg(results.algorithms.rsa2048.keyGenTime) },
       {
-        name: "ML-DSA-65",
-        time: avg(results.algorithms.dilithium3.keyGenTime),
+        name: "ML-DSA-44",
+        time: avg(results.algorithms.dilithium2.keyGenTime),
       },
     ]);
 
     results.summary.fastest.signing = getFastest([
       { name: "ECDSA", time: avg(results.algorithms.ecdsa.signTime) },
       { name: "RSA-2048", time: avg(results.algorithms.rsa2048.signTime) },
-      { name: "ML-DSA-65", time: avg(results.algorithms.dilithium3.signTime) },
+      { name: "ML-DSA-44", time: avg(results.algorithms.dilithium2.signTime) },
     ]);
 
     results.summary.fastest.verification = getFastest([
       { name: "ECDSA", time: avg(results.algorithms.ecdsa.verifyTime) },
       { name: "RSA-2048", time: avg(results.algorithms.rsa2048.verifyTime) },
       {
-        name: "ML-DSA-65",
-        time: avg(results.algorithms.dilithium3.verifyTime),
+        name: "ML-DSA-44",
+        time: avg(results.algorithms.dilithium2.verifyTime),
       },
     ]);
 
@@ -405,7 +405,7 @@ describe("Verifiable Credential Performance Comparison", () => {
       __dirname,
       "..",
       "comparison-results",
-      `performance-${timestamp}`
+      `performance-${timestamp}`,
     );
     mkdirSync(dir, { recursive: true });
 
@@ -422,7 +422,7 @@ describe("Verifiable Credential Performance Comparison", () => {
 
   function getFastest(items: { name: string; time: number }[]): string {
     return items.reduce((fastest, current) =>
-      current.time < fastest.time ? current : fastest
+      current.time < fastest.time ? current : fastest,
     ).name;
   }
 
@@ -459,21 +459,21 @@ describe("Verifiable Credential Performance Comparison", () => {
 | Algorithm | Avg (ms) | Min (ms) | Max (ms) | Median (ms) | Std Dev |
 |-----------|----------|----------|----------|-------------|---------|
 | ECDSA secp256k1 | ${avg(algorithms.ecdsa.keyGenTime).toFixed(3)} | ${min(
-      algorithms.ecdsa.keyGenTime
+      algorithms.ecdsa.keyGenTime,
     ).toFixed(2)} | ${max(algorithms.ecdsa.keyGenTime).toFixed(2)} | ${median(
-      algorithms.ecdsa.keyGenTime
+      algorithms.ecdsa.keyGenTime,
     ).toFixed(2)} | ${stdDev(algorithms.ecdsa.keyGenTime).toFixed(2)} |
 | RSA-PSS 2048 | ${avg(algorithms.rsa2048.keyGenTime).toFixed(3)} | ${min(
-      algorithms.rsa2048.keyGenTime
+      algorithms.rsa2048.keyGenTime,
     ).toFixed(2)} | ${max(algorithms.rsa2048.keyGenTime).toFixed(2)} | ${median(
-      algorithms.rsa2048.keyGenTime
+      algorithms.rsa2048.keyGenTime,
     ).toFixed(2)} | ${stdDev(algorithms.rsa2048.keyGenTime).toFixed(2)} |
-| ML-DSA-65 | ${avg(algorithms.dilithium3.keyGenTime).toFixed(3)} | ${min(
-      algorithms.dilithium3.keyGenTime
-    ).toFixed(2)} | ${max(algorithms.dilithium3.keyGenTime).toFixed(
-      2
-    )} | ${median(algorithms.dilithium3.keyGenTime).toFixed(2)} | ${stdDev(
-      algorithms.dilithium3.keyGenTime
+| ML-DSA-44 | ${avg(algorithms.dilithium2.keyGenTime).toFixed(3)} | ${min(
+      algorithms.dilithium2.keyGenTime,
+    ).toFixed(2)} | ${max(algorithms.dilithium2.keyGenTime).toFixed(
+      2,
+    )} | ${median(algorithms.dilithium2.keyGenTime).toFixed(2)} | ${stdDev(
+      algorithms.dilithium2.keyGenTime,
     ).toFixed(2)} |
 
 ### VC Issuance (Signing) Performance
@@ -481,21 +481,21 @@ describe("Verifiable Credential Performance Comparison", () => {
 | Algorithm | Avg (ms) | Min (ms) | Max (ms) | Median (ms) | Std Dev |
 |-----------|----------|----------|----------|-------------|---------|
 | ECDSA secp256k1 | ${avg(algorithms.ecdsa.signTime).toFixed(3)} | ${min(
-      algorithms.ecdsa.signTime
+      algorithms.ecdsa.signTime,
     ).toFixed(2)} | ${max(algorithms.ecdsa.signTime).toFixed(2)} | ${median(
-      algorithms.ecdsa.signTime
+      algorithms.ecdsa.signTime,
     ).toFixed(2)} | ${stdDev(algorithms.ecdsa.signTime).toFixed(2)} |
 | RSA-PSS 2048 | ${avg(algorithms.rsa2048.signTime).toFixed(3)} | ${min(
-      algorithms.rsa2048.signTime
+      algorithms.rsa2048.signTime,
     ).toFixed(2)} | ${max(algorithms.rsa2048.signTime).toFixed(2)} | ${median(
-      algorithms.rsa2048.signTime
+      algorithms.rsa2048.signTime,
     ).toFixed(2)} | ${stdDev(algorithms.rsa2048.signTime).toFixed(2)} |
-| ML-DSA-65 | ${avg(algorithms.dilithium3.signTime).toFixed(3)} | ${min(
-      algorithms.dilithium3.signTime
-    ).toFixed(2)} | ${max(algorithms.dilithium3.signTime).toFixed(
-      2
-    )} | ${median(algorithms.dilithium3.signTime).toFixed(2)} | ${stdDev(
-      algorithms.dilithium3.signTime
+| ML-DSA-44 | ${avg(algorithms.dilithium2.signTime).toFixed(3)} | ${min(
+      algorithms.dilithium2.signTime,
+    ).toFixed(2)} | ${max(algorithms.dilithium2.signTime).toFixed(
+      2,
+    )} | ${median(algorithms.dilithium2.signTime).toFixed(2)} | ${stdDev(
+      algorithms.dilithium2.signTime,
     ).toFixed(2)} |
 
 ### VC Verification Performance
@@ -503,21 +503,21 @@ describe("Verifiable Credential Performance Comparison", () => {
 | Algorithm | Avg (ms) | Min (ms) | Max (ms) | Median (ms) | Std Dev |
 |-----------|----------|----------|----------|-------------|---------|
 | ECDSA secp256k1 | ${avg(algorithms.ecdsa.verifyTime).toFixed(3)} | ${min(
-      algorithms.ecdsa.verifyTime
+      algorithms.ecdsa.verifyTime,
     ).toFixed(2)} | ${max(algorithms.ecdsa.verifyTime).toFixed(2)} | ${median(
-      algorithms.ecdsa.verifyTime
+      algorithms.ecdsa.verifyTime,
     ).toFixed(2)} | ${stdDev(algorithms.ecdsa.verifyTime).toFixed(2)} |
 | RSA-PSS 2048 | ${avg(algorithms.rsa2048.verifyTime).toFixed(3)} | ${min(
-      algorithms.rsa2048.verifyTime
+      algorithms.rsa2048.verifyTime,
     ).toFixed(2)} | ${max(algorithms.rsa2048.verifyTime).toFixed(2)} | ${median(
-      algorithms.rsa2048.verifyTime
+      algorithms.rsa2048.verifyTime,
     ).toFixed(2)} | ${stdDev(algorithms.rsa2048.verifyTime).toFixed(2)} |
-| ML-DSA-65 | ${avg(algorithms.dilithium3.verifyTime).toFixed(3)} | ${min(
-      algorithms.dilithium3.verifyTime
-    ).toFixed(2)} | ${max(algorithms.dilithium3.verifyTime).toFixed(
-      2
-    )} | ${median(algorithms.dilithium3.verifyTime).toFixed(2)} | ${stdDev(
-      algorithms.dilithium3.verifyTime
+| ML-DSA-44 | ${avg(algorithms.dilithium2.verifyTime).toFixed(3)} | ${min(
+      algorithms.dilithium2.verifyTime,
+    ).toFixed(2)} | ${max(algorithms.dilithium2.verifyTime).toFixed(
+      2,
+    )} | ${median(algorithms.dilithium2.verifyTime).toFixed(2)} | ${stdDev(
+      algorithms.dilithium2.verifyTime,
     ).toFixed(2)} |
 
 ---
@@ -530,7 +530,7 @@ describe("Verifiable Credential Performance Comparison", () => {
 |-----------|----------|
 | ECDSA secp256k1 | ${algorithms.ecdsa.keySize} |
 | RSA-PSS 2048 | ${algorithms.rsa2048.keySize} |
-| ML-DSA-65 | ${algorithms.dilithium3.keySize} |
+| ML-DSA-44 | ${algorithms.dilithium2.keySize} |
 
 ### Signature Sizes
 
@@ -538,7 +538,7 @@ describe("Verifiable Credential Performance Comparison", () => {
 |-----------|------------------------|
 | ECDSA secp256k1 | ${algorithms.ecdsa.signatureSize} |
 | RSA-PSS 2048 | ${algorithms.rsa2048.signatureSize} |
-| ML-DSA-65 | ${algorithms.dilithium3.signatureSize} |
+| ML-DSA-44 | ${algorithms.dilithium2.signatureSize} |
 
 ### Average Credential Sizes
 
@@ -546,7 +546,7 @@ describe("Verifiable Credential Performance Comparison", () => {
 |-----------|------------------------------|
 | ECDSA secp256k1 | ${Math.round(avg(algorithms.ecdsa.credentialSize))} |
 | RSA-PSS 2048 | ${Math.round(avg(algorithms.rsa2048.credentialSize))} |
-| ML-DSA-65 | ${Math.round(avg(algorithms.dilithium3.credentialSize))} |
+| ML-DSA-44 | ${Math.round(avg(algorithms.dilithium2.credentialSize))} |
 
 ---
 
@@ -566,9 +566,9 @@ describe("Verifiable Credential Performance Comparison", () => {
    - Also vulnerable to quantum attacks
    - Industry standard, widely trusted
 
-3. **ML-DSA-65 (Post-Quantum)**
-   - Fast signing (${avg(algorithms.dilithium3.signTime).toFixed(2)}ms avg)
-   - Largest signatures (${algorithms.dilithium3.signatureSize} bytes)
+3. **ML-DSA-44 (Post-Quantum)**
+   - Fast signing (${avg(algorithms.dilithium2.signTime).toFixed(2)}ms avg)
+   - Largest signatures (${algorithms.dilithium2.signatureSize} bytes)
    - Quantum-resistant (future-proof)
    - NIST standardized (FIPS 204)
 
@@ -576,8 +576,8 @@ describe("Verifiable Credential Performance Comparison", () => {
 
 - **Mobile/IoT Access Control (Current):** ECDSA secp256k1
 - **Enterprise PKI (Current):** RSA-PSS 2048
-- **Long-term Archival (10+ years):** ML-DSA-65
-- **Hybrid Systems:** ECDSA + ML-DSA-65 dual signatures
+- **Long-term Archival (10+ years):** ML-DSA-44
+- **Hybrid Systems:** ECDSA + ML-DSA-44 dual signatures
 
 ---
 
