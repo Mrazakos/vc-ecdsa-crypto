@@ -1,0 +1,42 @@
+{
+  "analysis": "anova",
+  "description": "Robust ANOVA statistical analysis with outlier handling and non-parametric tests",
+  "data_sources": [
+    "comparison-results/performance-*/raw-data.json",
+    "docker-emulation-benchmarks/mobile-benchmark-results/",
+    "docker-emulation-benchmarks/iot-benchmark-results/"
+  ],
+  "statistical_tests": [
+    "Welch's ANOVA (robust to unequal variances)",
+    "Kruskal-Wallis test (non-parametric)",
+    "Shapiro-Wilk normality test",
+    "Levene's test (homogeneity of variance)",
+    "Tukey's HSD post-hoc test"
+  ],
+  "assumptions_checking": {
+    "normality": true,
+    "homogeneity": true,
+    "independence": true
+  },
+  "visualization": {
+    "plots": [
+      "distribution_boxplots",
+      "violin_plots",
+      "qq_plots",
+      "residual_plots",
+      "interaction_plots"
+    ],
+    "dpi": 300,
+    "format": "png"
+  },
+  "effect_sizes": ["eta_squared", "omega_squared", "cohen_d"],
+  "output_directory": "anova-results",
+  "python_requirements": {
+    "scipy": ">=1.0",
+    "numpy": ">=1.20",
+    "pandas": ">=1.0",
+    "matplotlib": ">=3.0",
+    "seaborn": ">=0.10",
+    "statsmodels": ">=0.12"
+  }
+}

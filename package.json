@@ -9,7 +9,12 @@
     "dev": "tsc --watch",
     "prepublishOnly": "npm run build",
     "test": "npm run build && jest",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "research:comparison": "powershell -ExecutionPolicy Bypass -File research/experiments/comparison-tests/run-comparison.ps1",
+    "research:docker:mobile": "powershell -ExecutionPolicy Bypass -File research/experiments/docker-benchmarks/mobile/run-mobile-benchmark.ps1",
+    "research:docker:iot": "powershell -ExecutionPolicy Bypass -File research/experiments/docker-benchmarks/iot/run-iot-benchmark.ps1",
+    "research:anova": "powershell -ExecutionPolicy Bypass -File research/analysis/anova/run-anova.ps1",
+    "research:all": "npm run research:comparison && npm run research:docker:mobile && npm run research:docker:iot && npm run research:anova"
   },
   "keywords": [
     "ecdsa",

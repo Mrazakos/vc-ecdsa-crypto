@@ -145,6 +145,5 @@ vite.config.ts.timestamp-*
 
 test-reports
 comparison-results
-scripts
 anova-results
 iot-benchmark-results

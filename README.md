@@ -105,7 +105,46 @@ quickstart().catch(console.error);
 
 ---
 
-## 📚 Core Services
+## � Research & Benchmarking
+
+This repository includes comprehensive research comparing ECDSA, RSA-PSS, and ML-DSA-65 cryptographic algorithms for Verifiable Credentials.
+
+### Run Experiments
+
+**Quick start for all research:**
+```bash
+npm run research:all
+```
+
+**Run individual experiments:**
+```bash
+npm run research:comparison        # Performance & security comparison
+npm run research:docker:mobile     # Mobile device simulation
+npm run research:docker:iot        # IoT device simulation  
+npm run research:anova             # Statistical analysis
+```
+
+### What Gets Measured
+
+✅ **Performance**: Key generation, signing, verification speed & sizes  
+✅ **Security**: Tampering resistance, attack detection, malformed input handling  
+✅ **Real-world**: Mobile & IoT device benchmark results  
+✅ **Statistics**: Robust ANOVA with significance testing & effect sizes  
+
+### Results
+
+All results are automatically organized with timestamps in:
+- `comparison-results/` - Performance & security tests
+- `docker-emulation-benchmarks/` - Mobile & IoT benchmarks
+- `anova-results/` - Statistical analysis & plots
+
+### Full Documentation
+
+→ **[Research Guide](./research/README.md)** - Complete research workflow & setup
+
+---
+
+## �📚 Core Services
 
 The library follows a service-based architecture for clean separation of concerns:
 

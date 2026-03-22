@@ -1,0 +1,40 @@
+{
+  "experiment": "comparison-tests",
+  "description": "Comprehensive performance and security comparison of ECDSA, RSA-PSS, and ML-DSA-65",
+  "algorithms": [
+    "ECDSA (secp256k1)",
+    "RSA-PSS (2048-bit)",
+    "ML-DSA-65 (post-quantum)"
+  ],
+  "tests": {
+    "performance": "vc-comparison-performance",
+    "security": "vc-comparison-security"
+  },
+  "metrics": {
+    "performance": [
+      "key_generation_time_ms",
+      "signing_time_ms",
+      "verification_time_ms",
+      "signature_size_bytes",
+      "credential_size_bytes"
+    ],
+    "security": [
+      "signature_tampering_resistance",
+      "wrong_key_detection",
+      "field_tampering_detection",
+      "malformed_input_handling"
+    ]
+  },
+  "outputDir": "comparison-results",
+  "environment": {
+    "node_version": ">=16.0.0",
+    "typescript": ">=5.0",
+    "jest": ">=29.0.0"
+  },
+  "expected_outputs": [
+    "performance-report.md",
+    "security-report.md",
+    "raw-data.json",
+    "comparison-tables.json"
+  ]
+}
