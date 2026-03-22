@@ -28,7 +28,7 @@ Write-Host ""
 Write-Host "[2/3] Running ANOVA analysis..." -ForegroundColor Yellow
 
 $args = @(
-    "scripts/run_robust_anova_analysis.py",
+    "scripts/Anova_helpers_complete_comparison.py",
     "-d", $DataFolder
 )
 if ($GeneratePlots) {
