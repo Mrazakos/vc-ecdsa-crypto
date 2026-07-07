@@ -1,6 +1,6 @@
 # Raspberry Pi Performance Benchmark
 
-**Date:** 2026. 07. 07. 17:25:38  
+**Date:** 2026. 07. 07. 18:15:40  
 **Iterations:** 1 per operation
 
 ## Environment
@@ -16,7 +16,7 @@
 
 - Fastest key generation: ML-DSA-44
 - Fastest signing: ECDSA
-- Fastest verification: RSA-2048
+- Fastest verification: ML-DSA-44
 - Smallest key size: ECDSA
 - Smallest signature size: ECDSA
 - Smallest credential size: ECDSA
@@ -25,12 +25,13 @@
 
 | Algorithm | Key Gen Avg (ms) | Sign Avg (ms) | Verify Avg (ms) | Signature Size (bytes) | Credential Size (bytes) |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| ECDSA secp256k1 | 47.917 | 8.506 | 7.101 | 132 | 650 |
-| RSA-PSS 2048-bit | 3175.671 | 100.758 | 2.026 | 344 | 851 |
-| ML-DSA-44 (Dilithium2) | 16.887 | 9.452 | 2.796 | 3228 | 3737 |
+| ECDSA secp256k1 | 43.683 | 6.668 | 5.948 | 132 | 650 |
+| ML-DSA-44 (Dilithium2) | 11.580 | 12.510 | 2.125 | 3228 | 3737 |
+| Falcon-512 | 244.628 | 15.379 | 2.213 | 876 | 1385 |
 
 ## Pi 3 Notes
 
 - ECDSA should be the practical baseline on a Pi 3.
 - RSA-2048 is usable but usually slower.
-- ML-DSA-44 is the heaviest path and may be significantly slower on this hardware.
+- ML-DSA-44 is the current NIST PQ benchmark path.
+- Falcon-512 is the heaviest path and may be significantly slower on this hardware.

@@ -18,7 +18,12 @@ const fs = require("fs");
 const path = require("path");
 
 // Import crypto services
-const { ECDSACryptoService, PQCryptoService, VCIssuer } = require("../dist");
+const {
+  ECDSACryptoService,
+  PQCryptoService,
+  FalconCryptoService,
+  VCIssuer,
+} = require("../dist");
 
 // ============================================================================
 // CONFIGURATION
@@ -28,7 +33,7 @@ const DEVICE_TIER = process.env.DEVICE_TIER || "mid-range";
 const CONFIG = {
   iterations: parseInt(process.env.BENCHMARK_ITERATIONS) || 200,
   warmupIterations: 15,
-  algorithms: ["ECDSA", "ML-DSA-44"],
+  algorithms: ["ECDSA", "ML-DSA-44", "Falcon-512"],
   outputDir: "./mobile-benchmark-results",
   outputFile: `mobile-results-${DEVICE_TIER}.json`,
   outputMarkdown: `mobile-report-${DEVICE_TIER}.md`,
@@ -45,6 +50,11 @@ const ALGORITHMS = {
     name: "ML-DSA-44 (Dilithium2)",
     description: "Post-Quantum signature scheme",
     createService: () => new PQCryptoService(),
+  },
+  "Falcon-512": {
+    name: "Falcon-512",
+    description: "Post-Quantum signature scheme",
+    createService: () => new FalconCryptoService(),
   },
 };
 
@@ -399,7 +409,7 @@ function generateComparisonSummary(results) {
   console.log("=".repeat(70));
 
   const ecdsa = results["ECDSA"];
-  const mldsa = results["ML-DSA-44"];
+  const falcon = results["Falcon-512"];
 
   console.log(`\n🔑 Wallet Creation (Identity Generation):`);
   console.log(
@@ -409,7 +419,10 @@ function generateComparisonSummary(results) {
     `   ML-DSA-44: ${mldsa.walletCreation.avgTime.toFixed(2)}ms (median: ${mldsa.walletCreation.medianTime.toFixed(2)}ms)`,
   );
   console.log(
-    `   Speedup:   ${(mldsa.walletCreation.avgTime / ecdsa.walletCreation.avgTime).toFixed(2)}x faster with ECDSA`,
+    `   Falcon-512: ${falcon.walletCreation.avgTime.toFixed(2)}ms (median: ${falcon.walletCreation.medianTime.toFixed(2)}ms)`,
+  );
+  console.log(
+    `   Speedup:   ${(falcon.walletCreation.avgTime / ecdsa.walletCreation.avgTime).toFixed(2)}x faster with ECDSA`,
   );
 
   console.log(`\n✍️  Credential Signing:`);
@@ -420,7 +433,10 @@ function generateComparisonSummary(results) {
     `   ML-DSA-44: ${mldsa.credentialSigning.avgTime.toFixed(2)}ms (P95: ${mldsa.credentialSigning.p95.toFixed(2)}ms)`,
   );
   console.log(
-    `   Speedup:   ${(mldsa.credentialSigning.avgTime / ecdsa.credentialSigning.avgTime).toFixed(2)}x faster with ECDSA`,
+    `   Falcon-512: ${falcon.credentialSigning.avgTime.toFixed(2)}ms (P95: ${falcon.credentialSigning.p95.toFixed(2)}ms)`,
+  );
+  console.log(
+    `   Speedup:   ${(falcon.credentialSigning.avgTime / ecdsa.credentialSigning.avgTime).toFixed(2)}x faster with ECDSA`,
   );
 
   console.log(`\n⚡ Rapid Signing (10 signatures):`);
@@ -429,6 +445,9 @@ function generateComparisonSummary(results) {
   );
   console.log(
     `   ML-DSA-44: ${mldsa.rapidSigning.avgBatchTime.toFixed(2)}ms batch`,
+  );
+  console.log(
+    `   Falcon-512: ${falcon.rapidSigning.avgBatchTime.toFixed(2)}ms batch`,
   );
 
   console.log(`\n📦 Data Sizes:`);
@@ -439,17 +458,24 @@ function generateComparisonSummary(results) {
     `   Credential Size - ML-DSA-44: ${mldsa.sizes.credentialSize} bytes`,
   );
   console.log(
-    `   Overhead: ${((mldsa.sizes.credentialSize / ecdsa.sizes.credentialSize - 1) * 100).toFixed(1)}% larger with ML-DSA-44`,
+    `   Credential Size - Falcon-512: ${falcon.sizes.credentialSize} bytes`,
+  );
+  console.log(
+    `   Overhead: ${((falcon.sizes.credentialSize / ecdsa.sizes.credentialSize - 1) * 100).toFixed(1)}% larger with Falcon-512`,
   );
 
   console.log(`\n📱 Mobile UX Impact:`);
   const ecdsaUXAcceptable = ecdsa.credentialSigning.p95 < 100; // <100ms is imperceptible
   const mldsaUXAcceptable = mldsa.credentialSigning.p95 < 100;
+  const falconUXAcceptable = falcon.credentialSigning.p95 < 100;
   console.log(
     `   ECDSA P95 latency:    ${ecdsaUXAcceptable ? "✅ Imperceptible (<100ms)" : "⚠️  Noticeable"}`,
   );
   console.log(
     `   ML-DSA-44 P95 latency: ${mldsaUXAcceptable ? "✅ Imperceptible (<100ms)" : "⚠️  Noticeable"}`,
+  );
+  console.log(
+    `   Falcon-512 P95 latency: ${falconUXAcceptable ? "✅ Imperceptible (<100ms)" : "⚠️  Noticeable"}`,
   );
 
   console.log(`\n${"=".repeat(70)}\n`);

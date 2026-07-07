@@ -107,7 +107,7 @@ quickstart().catch(console.error);
 
 ## � Research & Benchmarking
 
-This repository includes comprehensive research comparing ECDSA, RSA-PSS, and ML-DSA-65 cryptographic algorithms for Verifiable Credentials.
+This repository includes comprehensive research comparing ECDSA, RSA-PSS, ML-DSA-65, and Falcon-512 cryptographic algorithms for Verifiable Credentials.
 
 ### Run Experiments
 

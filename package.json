@@ -44,7 +44,7 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@noble/post-quantum": "^0.2.1",
+    "@noble/post-quantum": "^0.6.1",
     "ethers": "^6.13.0",
     "node-forge": "^1.3.3",
     "node-rsa": "^1.1.1"

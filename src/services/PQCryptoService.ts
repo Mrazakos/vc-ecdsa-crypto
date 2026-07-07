@@ -1,4 +1,4 @@
-import { ml_dsa44 } from "@noble/post-quantum/ml-dsa";
+import { ml_dsa44 } from "@noble/post-quantum/ml-dsa.js";
 import { CryptoService } from "./CryptoService";
 import { CryptoIdentity } from "../types";
 import { createHash } from "crypto";
@@ -77,7 +77,7 @@ export class PQCryptoService extends CryptoService {
       );
 
       // Sign using ML-DSA-44
-      const signature = ml_dsa44.sign(secretKey, dataBytes);
+      const signature = ml_dsa44.sign(dataBytes, secretKey);
 
       // Return base64-encoded signature (33% smaller than hex)
       return Buffer.from(signature).toString("base64");
@@ -108,7 +108,7 @@ export class PQCryptoService extends CryptoService {
       );
 
       // Verify using ML-DSA-44
-      return ml_dsa44.verify(publicKeyBytes, dataBytes, signatureBytes);
+      return ml_dsa44.verify(signatureBytes, dataBytes, publicKeyBytes);
     } catch (error) {
       console.error("ML-DSA-44 verification failed:", error);
       return false;

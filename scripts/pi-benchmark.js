@@ -17,15 +17,15 @@ try {
 
 const {
   ECDSACryptoService,
-  RSACryptoService,
   PQCryptoService,
+  FalconCryptoService,
   VCIssuer,
   VCVerifier,
 } = cryptoLib;
 
 const iterations = parsePositiveInteger(
   readArgValue("--iterations") ?? process.env.PI_BENCH_ITERATIONS,
-  10,
+  200,
 );
 const outputDir =
   readArgValue("--output-dir") ?? "comparison-results/pi-benchmark-results";
@@ -50,13 +50,13 @@ async function main() {
         "ECDSA secp256k1",
         "256-bit (32 bytes private, 65 bytes public)",
       ),
-      rsa2048: createEmptyMetrics(
-        "RSA-PSS 2048-bit",
-        "2048-bit (~1700 bytes each)",
-      ),
       dilithium2: createEmptyMetrics(
         "ML-DSA-44 (Dilithium2)",
         "1952 bytes public, 4000 bytes secret",
+      ),
+      falcon512: createEmptyMetrics(
+        "Falcon-512",
+        "897 bytes public, 1281 bytes secret",
       ),
     },
     summary: {
@@ -82,42 +82,48 @@ async function main() {
     iterations,
   );
   await benchmarkAlgorithm(
-    new RSACryptoService(2048),
-    results.algorithms.rsa2048,
+    new PQCryptoService(),
+    results.algorithms.dilithium2,
     iterations,
   );
   await benchmarkAlgorithm(
-    new PQCryptoService(),
-    results.algorithms.dilithium2,
+    new FalconCryptoService(),
+    results.algorithms.falcon512,
     iterations,
   );
 
   results.summary.fastest.keyGen = getFastest([
     { name: "ECDSA", time: avg(results.algorithms.ecdsa.keyGenTime) },
-    { name: "RSA-2048", time: avg(results.algorithms.rsa2048.keyGenTime) },
     { name: "ML-DSA-44", time: avg(results.algorithms.dilithium2.keyGenTime) },
+    { name: "Falcon-512", time: avg(results.algorithms.falcon512.keyGenTime) },
   ]);
   results.summary.fastest.signing = getFastest([
     { name: "ECDSA", time: avg(results.algorithms.ecdsa.signTime) },
-    { name: "RSA-2048", time: avg(results.algorithms.rsa2048.signTime) },
     { name: "ML-DSA-44", time: avg(results.algorithms.dilithium2.signTime) },
+    { name: "Falcon-512", time: avg(results.algorithms.falcon512.signTime) },
   ]);
   results.summary.fastest.verification = getFastest([
     { name: "ECDSA", time: avg(results.algorithms.ecdsa.verifyTime) },
-    { name: "RSA-2048", time: avg(results.algorithms.rsa2048.verifyTime) },
     { name: "ML-DSA-44", time: avg(results.algorithms.dilithium2.verifyTime) },
+    { name: "Falcon-512", time: avg(results.algorithms.falcon512.verifyTime) },
   ]);
 
   results.summary.smallest.keySize = "ECDSA";
   results.summary.smallest.signatureSize = getSmallestSignature([
     { name: "ECDSA", size: results.algorithms.ecdsa.signatureSize },
-    { name: "RSA-2048", size: results.algorithms.rsa2048.signatureSize },
     { name: "ML-DSA-44", size: results.algorithms.dilithium2.signatureSize },
+    { name: "Falcon-512", size: results.algorithms.falcon512.signatureSize },
   ]);
   results.summary.smallest.credentialSize = getSmallestCredential([
     { name: "ECDSA", size: avg(results.algorithms.ecdsa.credentialSize) },
-    { name: "RSA-2048", size: avg(results.algorithms.rsa2048.credentialSize) },
-    { name: "ML-DSA-44", size: avg(results.algorithms.dilithium2.credentialSize) },
+    {
+      name: "ML-DSA-44",
+      size: avg(results.algorithms.dilithium2.credentialSize),
+    },
+    {
+      name: "Falcon-512",
+      size: avg(results.algorithms.falcon512.credentialSize),
+    },
   ]);
 
   const report = generateMarkdownReport(results);
@@ -234,14 +240,15 @@ function generateMarkdownReport(results) {
 | Algorithm | Key Gen Avg (ms) | Sign Avg (ms) | Verify Avg (ms) | Signature Size (bytes) | Credential Size (bytes) |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | ${algorithms.ecdsa.name} | ${avg(algorithms.ecdsa.keyGenTime).toFixed(3)} | ${avg(algorithms.ecdsa.signTime).toFixed(3)} | ${avg(algorithms.ecdsa.verifyTime).toFixed(3)} | ${algorithms.ecdsa.signatureSize} | ${Math.round(avg(algorithms.ecdsa.credentialSize))} |
-| ${algorithms.rsa2048.name} | ${avg(algorithms.rsa2048.keyGenTime).toFixed(3)} | ${avg(algorithms.rsa2048.signTime).toFixed(3)} | ${avg(algorithms.rsa2048.verifyTime).toFixed(3)} | ${algorithms.rsa2048.signatureSize} | ${Math.round(avg(algorithms.rsa2048.credentialSize))} |
 | ${algorithms.dilithium2.name} | ${avg(algorithms.dilithium2.keyGenTime).toFixed(3)} | ${avg(algorithms.dilithium2.signTime).toFixed(3)} | ${avg(algorithms.dilithium2.verifyTime).toFixed(3)} | ${algorithms.dilithium2.signatureSize} | ${Math.round(avg(algorithms.dilithium2.credentialSize))} |
+| ${algorithms.falcon512.name} | ${avg(algorithms.falcon512.keyGenTime).toFixed(3)} | ${avg(algorithms.falcon512.signTime).toFixed(3)} | ${avg(algorithms.falcon512.verifyTime).toFixed(3)} | ${algorithms.falcon512.signatureSize} | ${Math.round(avg(algorithms.falcon512.credentialSize))} |
 
 ## Pi 3 Notes
 
 - ECDSA should be the practical baseline on a Pi 3.
 - RSA-2048 is usable but usually slower.
-- ML-DSA-44 is the heaviest path and may be significantly slower on this hardware.
+- ML-DSA-44 is the current NIST PQ benchmark path.
+- Falcon-512 is the heaviest path and may be significantly slower on this hardware.
 `;
 }
 

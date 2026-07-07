@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-07T15:25:38.025Z",
+  "timestamp": "2026-07-07T16:15:40.576Z",
   "environment": {
     "platform": "win32",
     "release": "10.0.26200",
@@ -18,33 +18,16 @@
       "keySize": "256-bit (32 bytes private, 65 bytes public)",
       "signatureSize": 132,
       "keyGenTime": [
-        47.91669999999999
+        43.68299999999999
       ],
       "signTime": [
-        8.50649999999996
+        6.6678
       ],
       "verifyTime": [
-        7.1008999999999105
+        5.947600000000023
       ],
       "credentialSize": [
         650
-      ]
-    },
-    "rsa2048": {
-      "name": "RSA-PSS 2048-bit",
-      "keySize": "2048-bit (~1700 bytes each)",
-      "signatureSize": 344,
-      "keyGenTime": [
-        3175.6706999999997
-      ],
-      "signTime": [
-        100.75779999999986
-      ],
-      "verifyTime": [
-        2.025500000000193
-      ],
-      "credentialSize": [
-        851
       ]
     },
     "dilithium2": {
@@ -52,16 +35,33 @@
       "keySize": "1952 bytes public, 4000 bytes secret",
       "signatureSize": 3228,
       "keyGenTime": [
-        16.88650000000007
+        11.579799999999977
       ],
       "signTime": [
-        9.45219999999972
+        12.510299999999972
       ],
       "verifyTime": [
-        2.7958000000007814
+        2.1254000000000133
       ],
       "credentialSize": [
         3737
+      ]
+    },
+    "falcon512": {
+      "name": "Falcon-512",
+      "keySize": "897 bytes public, 1281 bytes secret",
+      "signatureSize": 876,
+      "keyGenTime": [
+        244.62829999999997
+      ],
+      "signTime": [
+        15.379000000000019
+      ],
+      "verifyTime": [
+        2.212600000000066
+      ],
+      "credentialSize": [
+        1385
       ]
     }
   },
@@ -69,7 +69,7 @@
     "fastest": {
       "keyGen": "ML-DSA-44",
       "signing": "ECDSA",
-      "verification": "RSA-2048"
+      "verification": "ML-DSA-44"
     },
     "smallest": {
       "keySize": "ECDSA",

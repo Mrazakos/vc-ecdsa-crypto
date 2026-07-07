@@ -24,6 +24,7 @@ export { CryptoIdentity, Hash, Address } from "./types";
 export { CryptoService, ECDSACryptoService } from "./services/CryptoService";
 export { RSACryptoService } from "./services/RSACryptoService";
 export { PQCryptoService } from "./services/PQCryptoService";
+export { FalconCryptoService } from "./services/FalconCryptoService";
 
 // Separation of concerns: on-chain vs off-chain
 export { OffChainService } from "./services/OffChainService";
@@ -41,6 +42,7 @@ import { VCIssuer } from "./services/VCIssuer";
 import { VCVerifier } from "./services/VCVerifier";
 import { VCRevoke } from "./services/VCRevoke";
 import { ECDSACryptoService } from "./services/CryptoService";
+import { FalconCryptoService } from "./services/FalconCryptoService";
 import { OffChainService } from "./services/OffChainService";
 import { OnChainService } from "./services/OnChainService";
 
@@ -53,6 +55,7 @@ export default {
   VCVerifier,
   VCRevoke,
   ECDSACryptoService,
+  FalconCryptoService,
   OffChainService,
   OnChainService,
 };

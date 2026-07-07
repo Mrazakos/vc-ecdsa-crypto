@@ -18,6 +18,7 @@ const path = require("path");
 const {
   ECDSACryptoService,
   PQCryptoService,
+  FalconCryptoService,
   VCIssuer,
   VCVerifier,
 } = require("../dist");
@@ -29,7 +30,7 @@ const {
 const CONFIG = {
   iterations: 200, // Number of test iterations per operation (increased for statistical significance)
   warmupIterations: 15, // Warmup runs to stabilize JIT compilation
-  algorithms: ["ECDSA", "ML-DSA-44"],
+  algorithms: ["ECDSA", "ML-DSA-44", "Falcon-512"],
   outputDir: "./iot-benchmark-results",
   outputFile: "iot-benchmark-results.json",
   outputMarkdown: "iot-benchmark-report.md",
@@ -44,8 +45,13 @@ const ALGORITHMS = {
   },
   "ML-DSA-44": {
     name: "ML-DSA-44 (Dilithium2)",
-    keySize: "1312 bytes public, 2560 bytes secret",
+    keySize: "1952 bytes public, 4000 bytes secret",
     createService: () => new PQCryptoService(),
+  },
+  "Falcon-512": {
+    name: "Falcon-512",
+    keySize: "897 bytes public, 1281 bytes secret",
+    createService: () => new FalconCryptoService(),
   },
 };
 
