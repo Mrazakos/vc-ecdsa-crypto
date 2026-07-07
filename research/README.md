@@ -82,6 +82,26 @@ Simulates:
 
 📍 Details: [experiments/docker-benchmarks/iot/README.md](experiments/docker-benchmarks/iot/README.md)
 
+### 4. Raspberry Pi 3 Benchmark
+
+**Run the benchmark directly on a Raspberry Pi 3**
+
+```powershell
+npm run benchmark:pi -- --iterations 10
+```
+
+Use this when you want native on-device numbers instead of a Docker emulation profile.
+
+Measures:
+
+- Key generation time
+- Credential signing time
+- Credential verification time
+- Signature and credential sizes
+- Environment metadata for the Pi run
+
+Results are written to `comparison-results/pi-benchmark-results/`.
+
 ---
 
 ## 📈 Statistical Analysis

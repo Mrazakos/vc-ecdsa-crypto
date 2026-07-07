@@ -9,6 +9,7 @@
     "dev": "tsc --watch",
     "prepublishOnly": "npm run build",
     "test": "npm run build && jest",
+    "benchmark:pi": "npm run build && node scripts/pi-benchmark.js",
     "clean": "rimraf dist",
     "research:comparison": "powershell -ExecutionPolicy Bypass -File research/experiments/comparison-tests/run-comparison.ps1",
     "research:docker:mobile": "powershell -ExecutionPolicy Bypass -File research/experiments/docker-benchmarks/mobile/run-mobile-benchmark.ps1",

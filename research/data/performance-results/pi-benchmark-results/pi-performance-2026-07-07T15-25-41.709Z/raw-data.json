@@ -1,0 +1,80 @@
+{
+  "timestamp": "2026-07-07T15:25:38.025Z",
+  "environment": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "arch": "x64",
+    "cpuModel": "12th Gen Intel(R) Core(TM) i7-1260P",
+    "cpuCores": 16,
+    "totalMemoryBytes": 16787910656,
+    "nodeVersion": "v22.18.0"
+  },
+  "testConfig": {
+    "iterations": 1
+  },
+  "algorithms": {
+    "ecdsa": {
+      "name": "ECDSA secp256k1",
+      "keySize": "256-bit (32 bytes private, 65 bytes public)",
+      "signatureSize": 132,
+      "keyGenTime": [
+        47.91669999999999
+      ],
+      "signTime": [
+        8.50649999999996
+      ],
+      "verifyTime": [
+        7.1008999999999105
+      ],
+      "credentialSize": [
+        650
+      ]
+    },
+    "rsa2048": {
+      "name": "RSA-PSS 2048-bit",
+      "keySize": "2048-bit (~1700 bytes each)",
+      "signatureSize": 344,
+      "keyGenTime": [
+        3175.6706999999997
+      ],
+      "signTime": [
+        100.75779999999986
+      ],
+      "verifyTime": [
+        2.025500000000193
+      ],
+      "credentialSize": [
+        851
+      ]
+    },
+    "dilithium2": {
+      "name": "ML-DSA-44 (Dilithium2)",
+      "keySize": "1952 bytes public, 4000 bytes secret",
+      "signatureSize": 3228,
+      "keyGenTime": [
+        16.88650000000007
+      ],
+      "signTime": [
+        9.45219999999972
+      ],
+      "verifyTime": [
+        2.7958000000007814
+      ],
+      "credentialSize": [
+        3737
+      ]
+    }
+  },
+  "summary": {
+    "fastest": {
+      "keyGen": "ML-DSA-44",
+      "signing": "ECDSA",
+      "verification": "RSA-2048"
+    },
+    "smallest": {
+      "keySize": "ECDSA",
+      "signatureSize": "ECDSA",
+      "credentialSize": "ECDSA"
+    }
+  }
+}
