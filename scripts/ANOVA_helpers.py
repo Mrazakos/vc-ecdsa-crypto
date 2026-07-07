@@ -41,6 +41,9 @@ def plot_individual_metrics(metrics_data, system_names, save_dir="plots"):
         ax.set_ylabel(metric_name, fontsize=22, fontweight='bold')
         ax.tick_params(axis='both', labelsize=22)
 
+        if 'key generation' in metric_name.lower():
+            ax.set_ylim(0, 8)
+
         plt.tight_layout()
         output_path = os.path.join(save_dir, f"{metric_name.replace(' ', '_')}_distribution.png")
         plt.savefig(output_path, dpi=300)

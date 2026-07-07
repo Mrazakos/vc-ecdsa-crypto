@@ -9,6 +9,164 @@ import pandas as pd
 import statistics
 
 
+def plot_categorical_latency_barchart(df, metric_column, bins, labels, save_dir="plots"):
+    """
+    Plot a grouped categorical latency bar chart for ECDSA vs ML-DSA-44.
+
+    Parameters:
+    - df: DataFrame containing at least 'System' and metric_column.
+    - metric_column: Name of the latency column to bin.
+    - bins: Numeric bin edges for pd.cut.
+    - labels: Display labels for each latency interval.
+    """
+    required_columns = {'System', metric_column}
+    missing_columns = required_columns - set(df.columns)
+    if missing_columns:
+        raise ValueError(f"Missing required columns: {sorted(missing_columns)}")
+
+    if len(labels) != len(bins) - 1:
+        raise ValueError("labels must have exactly len(bins) - 1 elements")
+
+    # Work on a copy so the original DataFrame stays unchanged.
+    plot_df = df[['System', metric_column]].copy()
+    plot_df = plot_df.dropna(subset=['System', metric_column])
+
+    # Convert continuous latency values into explicit categorical ranges.
+    plot_df['Latency Range'] = pd.cut(
+        plot_df[metric_column],
+        bins=bins,
+        labels=labels,
+        include_lowest=True,
+        right=False
+    )
+
+    # Ensure all requested ranges appear in the chart, even with zero counts.
+    latency_categories = pd.CategoricalDtype(categories=labels, ordered=True)
+    plot_df['Latency Range'] = plot_df['Latency Range'].astype(latency_categories)
+
+    preferred_system_order = ['ECDSA', 'ML-DSA-44']
+    present_systems = plot_df['System'].dropna().unique().tolist()
+    system_order = [s for s in preferred_system_order if s in present_systems]
+    if not system_order:
+        system_order = sorted(present_systems)
+
+    grouped = (
+        plot_df
+        .groupby(['System', 'Latency Range'], observed=False)
+        .size()
+        .reset_index(name='Count')
+    )
+
+    full_index = pd.MultiIndex.from_product(
+        [system_order, labels],
+        names=['System', 'Latency Range']
+    )
+    grouped = (
+        grouped
+        .set_index(['System', 'Latency Range'])
+        .reindex(full_index, fill_value=0)
+        .reset_index()
+    )
+
+    os.makedirs(save_dir, exist_ok=True)
+    plt.figure(figsize=(12, 6))
+    sns.barplot(
+        data=grouped,
+        x='Latency Range',
+        y='Count',
+        hue='System',
+        order=labels,
+        hue_order=system_order
+    )
+
+    plt.xlabel('Latency Range', fontsize=24)
+    plt.ylabel('Number of Operations', fontsize=24)
+    plt.title(f"{metric_column} Distribution", fontsize=20, fontweight='bold')
+    plt.xticks(rotation=25, ha='right', fontsize=20)
+    plt.yticks(fontsize=20)
+    legend = plt.legend(title='System', fontsize=20, title_fontsize=20)
+    if legend is not None:
+        legend.get_frame().set_alpha(0.9)
+    plt.tight_layout()
+
+    output_path = os.path.join(save_dir, f"{metric_column.replace(' ', '_')}_distribution_categorical.png")
+    plt.savefig(output_path, dpi=300)
+    print(f"Saved plot: {output_path}")
+    plt.close()
+
+def _format_ms_value(value):
+    if isinstance(value, float) and math.isinf(value):
+        return "inf"
+    rounded = round(float(value), 4)
+    if rounded.is_integer():
+        return str(int(rounded))
+    if abs(rounded) >= 10:
+        return f"{rounded:.1f}".rstrip('0').rstrip('.')
+    if abs(rounded) >= 1:
+        return f"{rounded:.2f}".rstrip('0').rstrip('.')
+    return f"{rounded:.3f}".rstrip('0').rstrip('.')
+
+
+def _nice_step(target_step):
+    if target_step <= 0:
+        return 1.0
+    magnitude = 10 ** math.floor(math.log10(target_step))
+    normalized = target_step / magnitude
+    if normalized <= 1:
+        nice = 1
+    elif normalized <= 2:
+        nice = 2
+    elif normalized <= 2.5:
+        nice = 2.5
+    elif normalized <= 5:
+        nice = 5
+    else:
+        nice = 10
+    return nice * magnitude
+
+
+def build_reasonable_bins_and_labels(values, core_bin_count=5):
+    """
+    Build readable latency bins from observed values with an explicit overflow bin.
+    """
+    numeric_values = [float(v) for v in values if pd.notna(v)]
+    if not numeric_values:
+        return [0, 1, float('inf')], ['0-1 ms', '> 1 ms']
+
+    sorted_vals = sorted(numeric_values)
+    max_val = sorted_vals[-1]
+    p95_index = int(0.95 * (len(sorted_vals) - 1))
+    p95_val = sorted_vals[p95_index]
+
+    target_step = max(p95_val / core_bin_count, max_val / (core_bin_count * 4), 0.1)
+    step = _nice_step(target_step)
+    last_finite_edge = max(step, math.ceil(p95_val / step) * step)
+
+    bins = [0.0]
+    while bins[-1] < last_finite_edge:
+        bins.append(round(bins[-1] + step, 10))
+
+    # Always include an explicit open-ended tail bin for outliers.
+    bins.append(float('inf'))
+
+    labels = []
+    for i in range(len(bins) - 2):
+        left = _format_ms_value(bins[i])
+        right = _format_ms_value(bins[i + 1])
+        labels.append(f"{left}-{right} ms")
+    labels.append(f"> {_format_ms_value(bins[-2])} ms")
+
+    return bins, labels
+
+
+def build_metric_dataframe(metric_name, columns, system_names):
+    records = []
+    for system, values in zip(system_names, columns):
+        for value in values:
+            records.append({'System': system, metric_name: value})
+    return pd.DataFrame(records)
+
+
 def plot_individual_metrics(metrics_data, system_names, save_dir="plots"):
     """
     Safely generate plots for each metric and save them to disk in headless mode.
@@ -39,6 +197,11 @@ def plot_individual_metrics(metrics_data, system_names, save_dir="plots"):
         ax.set_title(f"Distribution of '{metric_name}'", fontsize=22, fontweight='bold')
         ax.set_xlabel("System", fontsize=22, fontweight='bold')
         ax.set_ylabel(metric_name, fontsize=22, fontweight='bold')
+
+        # Keep key-generation plots focused on the operational range.
+        if "key generation" in metric_name.lower():
+            ax.set_ylim(0, 8)
+
         ax.tick_params(axis='both', labelsize=22)
 
         plt.tight_layout()
@@ -405,6 +568,20 @@ def main():
     
     for metric_name, columns in metrics_data.items():
         print("="*70)
+
+        metric_df = build_metric_dataframe(metric_name, columns, system_names)
+        if metric_name == 'Smart Lock Verification (ms)':
+            # Focus smart-lock verification on the most relevant operational ranges.
+            bins = [1.0, 5.0, 10.0, float('inf')]
+            labels = ['1-5 ms', '5-10 ms', '> 10 ms']
+        else:
+            all_values = [v for col in columns for v in col]
+            bins, labels = build_reasonable_bins_and_labels(all_values)
+
+        print(f"Generating categorical bar chart for '{metric_name}' with bins:")
+        print(f"  {labels}")
+        plot_categorical_latency_barchart(metric_df, metric_name, bins, labels, save_dir=output_dir)
+
         anova_results = calculate_anova(columns)
         
         # Calculate Cohen's d for all pairwise comparisons
