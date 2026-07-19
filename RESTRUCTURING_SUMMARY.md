@@ -130,7 +130,7 @@ All results are saved with timestamps automatically:
 | Comparison tests  | `comparison-results/`                                   |
 | Mobile benchmarks | `docker-emulation-benchmarks/mobile-benchmark-results/` |
 | IoT benchmarks    | `docker-emulation-benchmarks/iot-benchmark-results/`    |
-| ANOVA analysis    | `anova-results/`                                        |
+| ANOVA analysis    | `anova-results/[comparison|iot|comprehensive]-analysis/`|
 
 Each contains:
 
@@ -138,7 +138,7 @@ Each contains:
 - JSON data files
 - Plots & visualizations
 
----
+   ANOVA Analysis → anova-results/[comparison|iot|comprehensive]-analysis/
 
 ## 📚 Documentation
 

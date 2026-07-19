@@ -136,7 +136,12 @@ npm run research:anova             # Statistical analysis
 All results are automatically organized with timestamps in:
 - `comparison-results/` - Performance & security tests
 - `docker-emulation-benchmarks/` - Mobile & IoT benchmarks
-- `anova-results/` - Statistical analysis & plots
+- `anova-results/` - Statistical analysis & plots, organized by analysis type
+
+ANOVA results are split into the current analysis subfolders:
+- `anova-results/comparison-analysis/`
+- `anova-results/iot-analysis/`
+- `anova-results/comprehensive-analysis/`
 
 ### Full Documentation
 

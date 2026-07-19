@@ -1,7 +1,13 @@
 import math
 import os
 import json
-from scipy.stats import f
+import sys
+from scipy.stats import f, t
+
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -44,7 +50,7 @@ def plot_categorical_latency_barchart(df, metric_column, bins, labels, save_dir=
     latency_categories = pd.CategoricalDtype(categories=labels, ordered=True)
     plot_df['Latency Range'] = plot_df['Latency Range'].astype(latency_categories)
 
-    preferred_system_order = ['ECDSA', 'ML-DSA-44']
+    preferred_system_order = ['ECDSA', 'ML-DSA-44', 'Falcon-512', 'FN-DSA']
     present_systems = plot_df['System'].dropna().unique().tolist()
     system_order = [s for s in preferred_system_order if s in present_systems]
     if not system_order:
@@ -84,7 +90,7 @@ def plot_categorical_latency_barchart(df, metric_column, bins, labels, save_dir=
     plt.title(f"{metric_column} Distribution", fontsize=20, fontweight='bold')
     plt.xticks(rotation=25, ha='right', fontsize=20)
     plt.yticks(fontsize=20)
-    legend = plt.legend(title='System', fontsize=20, title_fontsize=20)
+    legend = plt.legend(title='System', loc='upper right', fontsize=20, title_fontsize=20)
     if legend is not None:
         legend.get_frame().set_alpha(0.9)
     plt.tight_layout()
@@ -167,6 +173,65 @@ def build_metric_dataframe(metric_name, columns, system_names):
     return pd.DataFrame(records)
 
 
+def _percentile(values, percentile):
+    numeric_values = [float(value) for value in values if pd.notna(value)]
+    if not numeric_values:
+        return float('nan')
+
+    sorted_values = sorted(numeric_values)
+    if len(sorted_values) == 1:
+        return sorted_values[0]
+
+    position = (len(sorted_values) - 1) * (percentile / 100.0)
+    lower_index = math.floor(position)
+    upper_index = math.ceil(position)
+    if lower_index == upper_index:
+        return sorted_values[lower_index]
+
+    lower_value = sorted_values[lower_index]
+    upper_value = sorted_values[upper_index]
+    weight = position - lower_index
+    return lower_value + (upper_value - lower_value) * weight
+
+
+def _mean_confidence_interval(values, confidence=0.95):
+    numeric_values = [float(value) for value in values if pd.notna(value)]
+    if len(numeric_values) < 2:
+        return float('nan'), float('nan')
+
+    mean_value = sum(numeric_values) / len(numeric_values)
+    sample_std = statistics.stdev(numeric_values)
+    margin = t.ppf((1 + confidence) / 2.0, len(numeric_values) - 1) * (sample_std / math.sqrt(len(numeric_values)))
+    return mean_value - margin, mean_value + margin
+
+
+def _describe_group(values, confidence=0.95):
+    numeric_values = [float(value) for value in values if pd.notna(value)]
+    if not numeric_values:
+        return {
+            'n': 0,
+            'mean': float('nan'),
+            'median': float('nan'),
+            'std': float('nan'),
+            'ci_low': float('nan'),
+            'ci_high': float('nan'),
+            'p95': float('nan'),
+            'p99': float('nan')
+        }
+
+    ci_low, ci_high = _mean_confidence_interval(numeric_values, confidence=confidence)
+    return {
+        'n': len(numeric_values),
+        'mean': sum(numeric_values) / len(numeric_values),
+        'median': statistics.median(numeric_values),
+        'std': statistics.stdev(numeric_values) if len(numeric_values) > 1 else float('nan'),
+        'ci_low': ci_low,
+        'ci_high': ci_high,
+        'p95': _percentile(numeric_values, 95),
+        'p99': _percentile(numeric_values, 99)
+    }
+
+
 def plot_individual_metrics(metrics_data, system_names, save_dir="plots"):
     """
     Safely generate plots for each metric and save them to disk in headless mode.
@@ -198,9 +263,11 @@ def plot_individual_metrics(metrics_data, system_names, save_dir="plots"):
         ax.set_xlabel("System", fontsize=22, fontweight='bold')
         ax.set_ylabel(metric_name, fontsize=22, fontweight='bold')
 
-        # Keep key-generation plots focused on the operational range.
         if "key generation" in metric_name.lower():
-            ax.set_ylim(0, 8)
+            positive_values = [value for column in columns for value in column if value > 0]
+            if positive_values:
+                ax.set_yscale('log')
+                ax.set_ylim(bottom=max(min(positive_values) / 2, 1e-3))
 
         ax.tick_params(axis='both', labelsize=22)
 
@@ -334,9 +401,17 @@ def print_anova_results(metric_name, anova_results, group_labels, cohens_d_resul
     print(f"\nANOVA results for {metric_name}:")
     print("-" * 60)
     print(f"Groups: {group_labels}")
-    print("Means and standard deviations per group:")
-    for label, mean, std in zip(group_labels, anova_results['group_means'], anova_results['group_stds']):
-        print(f"  {label}: Mean = {mean:.4f}, Std = {std:.4f}")
+    print("Descriptive statistics per group:")
+    print(f"{'Group':<15}{'N':<8}{'Mean':<12}{'Median':<12}{'Std':<12}{'95% CI':<26}{'p95':<12}{'p99':<12}")
+    print("-" * 105)
+    for label, values in zip(group_labels, anova_results['group_values']):
+        stats = _describe_group(values)
+        ci_text = f"[{_format_ms_value(stats['ci_low'])}, {_format_ms_value(stats['ci_high'])}]"
+        print(
+            f"{label:<15}{stats['n']:<8}{_format_ms_value(stats['mean']):<12}"
+            f"{_format_ms_value(stats['median']):<12}{_format_ms_value(stats['std']):<12}"
+            f"{ci_text:<26}{_format_ms_value(stats['p95']):<12}{_format_ms_value(stats['p99']):<12}"
+        )
     print("\nANOVA Table:")
     print(f"{'Source':<15}{'SS':<15}{'df':<10}{'MS':<15}{'F':<10}")
     print("-" * 65)
@@ -453,9 +528,16 @@ def main():
     latest_folder = sorted(perf_folders)[-1]
     comparison_file = os.path.join(comparison_dir, latest_folder, "raw-data.json")
     
-    iot_file = os.path.join(project_dir, "docker-emulation-benchmarks", 
-                           "iot-benchmark-results", "iot-benchmark-results.json")
+    pi_dir = os.path.join(comparison_dir, "pi-benchmark-results")
+    pi_folders = [f for f in os.listdir(pi_dir) if f.startswith('pi-performance-')]
     
+    if not pi_folders:
+        print(f"Error: No pi-benchmark folders found in {pi_dir}")
+        return
+    
+    latest_pi_folder = sorted(pi_folders)[-1]
+    iot_file = os.path.join(pi_dir, latest_pi_folder, "raw-data.json")
+
     mobile_file = os.path.join(project_dir, "docker-emulation-benchmarks",
                               "mobile-benchmark-results", "mobile-results-mid-range.json")
     
@@ -463,7 +545,7 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
     
     # System names
-    system_names = ["ECDSA", "ML-DSA-44"]
+    system_names = ["ECDSA", "ML-DSA-44", "Falcon-512"]
     metrics_data = {}
     
     # ========== Load Comparison Results Data ==========
@@ -474,19 +556,23 @@ def main():
         
         ecdsa_comp = comp_data['algorithms']['ecdsa']
         mldsa_comp = comp_data['algorithms']['dilithium2']
+        falcon_comp = comp_data['algorithms']['falcon512']
         
         # Extract key generation, signing, and verification times
         metrics_data['Key Generation Time (ms)'] = [
             ecdsa_comp['keyGenTime'],
-            mldsa_comp['keyGenTime']
+            mldsa_comp['keyGenTime'],
+            falcon_comp['keyGenTime']
         ]
         metrics_data['Signing Time (ms)'] = [
             ecdsa_comp['signTime'],
-            mldsa_comp['signTime']
+            mldsa_comp['signTime'],
+            falcon_comp['signTime']
         ]
         metrics_data['VC Verification Time (ms)'] = [
             ecdsa_comp['verifyTime'],
-            mldsa_comp['verifyTime']
+            mldsa_comp['verifyTime'],
+            falcon_comp['verifyTime']
         ]
         
         print(f"✓ Loaded comparison data")
@@ -496,24 +582,26 @@ def main():
     else:
         print(f"Warning: Comparison file not found at {comparison_file}")
     
-    # ========== Load IoT Benchmark Data ==========
-    print(f"\nLoading IoT benchmark data...")
+    # ========== Load PI Benchmark Data ==========
+    print(f"\nLoading PI benchmark data...")
     if os.path.exists(iot_file):
         with open(iot_file, 'r') as f:
             iot_data = json.load(f)
         
-        ecdsa_iot = iot_data['algorithms']['ECDSA']['verifyTime']
-        mldsa_iot = iot_data['algorithms']['ML-DSA-44']['verifyTime']
+        ecdsa_iot = iot_data['algorithms']['ecdsa']['verifyTime']
+        mldsa_iot = iot_data['algorithms']['dilithium2']['verifyTime']
+        falcon_iot = iot_data['algorithms']['falcon512']['verifyTime']
         
         metrics_data['Smart Lock Verification (ms)'] = [
             ecdsa_iot,
-            mldsa_iot
+            mldsa_iot,
+            falcon_iot
         ]
         
-        print(f"✓ Loaded IoT benchmark data")
+        print(f"✓ Loaded PI benchmark data")
         print(f"  - Smart Lock Verification: {len(ecdsa_iot)} samples each")
     else:
-        print(f"Warning: IoT benchmark file not found at {iot_file}")
+        print(f"Warning: PI benchmark file not found at {iot_file}")
     
     # ========== Load Mobile Benchmark Data ==========
     print(f"\nLoading mobile benchmark data...")
@@ -523,12 +611,14 @@ def main():
         
         ecdsa_mobile = mobile_data['results']['ECDSA']
         mldsa_mobile = mobile_data['results']['ML-DSA-44']
+        falcon_mobile = mobile_data['results']['Falcon-512']
         
         # Check if raw timing data exists (from updated benchmark)
         if 'times' in ecdsa_mobile.get('walletCreation', {}):
             metrics_data['Mobile Key Generation (ms)'] = [
                 ecdsa_mobile['walletCreation']['times'],
-                mldsa_mobile['walletCreation']['times']
+                mldsa_mobile['walletCreation']['times'],
+                falcon_mobile['walletCreation']['times']
             ]
             print(f"✓ Loaded mobile key generation data")
             print(f"  - Mobile Key Generation: {len(ecdsa_mobile['walletCreation']['times'])} samples each")
@@ -538,7 +628,8 @@ def main():
         if 'times' in ecdsa_mobile.get('credentialSigning', {}):
             metrics_data['Mobile Signing (ms)'] = [
                 ecdsa_mobile['credentialSigning']['times'],
-                mldsa_mobile['credentialSigning']['times']
+                mldsa_mobile['credentialSigning']['times'],
+                falcon_mobile['credentialSigning']['times']
             ]
             print(f"✓ Loaded mobile signing data")
             print(f"  - Mobile Signing: {len(ecdsa_mobile['credentialSigning']['times'])} samples each")
@@ -574,6 +665,10 @@ def main():
             # Focus smart-lock verification on the most relevant operational ranges.
             bins = [1.0, 5.0, 10.0, float('inf')]
             labels = ['1-5 ms', '5-10 ms', '> 10 ms']
+        elif 'key generation' in metric_name.lower():
+            # Key generation has a huge disparity (ECDSA/ML-DSA-44 are around 1ms, Falcon is 200+ms)
+            bins = [0.0, 1.0, 2.0, 5.0, 10.0, 50.0, 150.0, 300.0, float('inf')]
+            labels = ['<1 ms', '1-2 ms', '2-5 ms', '5-10 ms', '10-50 ms', '50-150 ms', '150-300 ms', '>300 ms']
         else:
             all_values = [v for col in columns for v in col]
             bins, labels = build_reasonable_bins_and_labels(all_values)
@@ -583,6 +678,7 @@ def main():
         plot_categorical_latency_barchart(metric_df, metric_name, bins, labels, save_dir=output_dir)
 
         anova_results = calculate_anova(columns)
+        anova_results['group_values'] = columns
         
         # Calculate Cohen's d for all pairwise comparisons
         cohens_d_results = {} 

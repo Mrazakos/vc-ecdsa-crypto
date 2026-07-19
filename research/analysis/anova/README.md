@@ -97,17 +97,21 @@ All results saved to `anova-results/`:
 
 ```
 anova-results/
-├── anova-report.md                 # Main findings
-├── statistical-summary.json        # Raw statistics
-├── assumptions-diagnostics.md      # Test assumption checks
-├── effect-sizes.json               # Effect size analysis
-├── pairwise-comparisons.json       # Post-hoc test results
-└── plots/
-    ├── algorithm_performance_distribution.png
-    ├── qq_plot_keygen.png
-    ├── residual_analysis.png
-    ├── violin_plot_signing_time.png
-    └── ... [more plots]
+├── comparison-analysis/
+│   ├── anova-report.md                 # Main findings
+│   ├── statistical-summary.json        # Raw statistics
+│   ├── assumptions-diagnostics.md      # Test assumption checks
+│   ├── effect-sizes.json               # Effect size analysis
+│   ├── pairwise-comparisons.json       # Post-hoc test results
+│   └── plots/
+├── iot-analysis/
+│   ├── anova-report.md
+│   ├── statistical-summary.json
+│   └── plots/
+└── comprehensive-analysis/
+   ├── anova-report.md
+   ├── statistical-summary.json
+   └── plots/
 ```
 
 ## Interpreting Results

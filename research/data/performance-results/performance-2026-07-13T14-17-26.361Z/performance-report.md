@@ -1,7 +1,7 @@
 # Raspberry Pi Performance Benchmark
 
-**Date:** 2026. 07. 07. 18:15:40  
-**Iterations:** 1 per operation
+**Date:** 2026. 07. 13. 16:16:35  
+**Iterations:** 200 per operation
 
 ## Environment
 
@@ -14,9 +14,9 @@
 
 ## Summary
 
-- Fastest key generation: ML-DSA-44
+- Fastest key generation: ECDSA
 - Fastest signing: ECDSA
-- Fastest verification: ML-DSA-44
+- Fastest verification: Falcon-512
 - Smallest key size: ECDSA
 - Smallest signature size: ECDSA
 - Smallest credential size: ECDSA
@@ -25,9 +25,9 @@
 
 | Algorithm | Key Gen Avg (ms) | Sign Avg (ms) | Verify Avg (ms) | Signature Size (bytes) | Credential Size (bytes) |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| ECDSA secp256k1 | 43.683 | 6.668 | 5.948 | 132 | 650 |
-| ML-DSA-44 (Dilithium2) | 11.580 | 12.510 | 2.125 | 3228 | 3737 |
-| Falcon-512 | 244.628 | 15.379 | 2.213 | 876 | 1385 |
+| ECDSA secp256k1 | 0.905 | 1.501 | 4.042 | 132 | 650 |
+| ML-DSA-44 (Dilithium2) | 1.183 | 5.043 | 1.140 | 3228 | 3737 |
+| Falcon-512 | 235.743 | 3.627 | 0.745 | 876 | 1385 |
 
 ## Pi 3 Notes
 

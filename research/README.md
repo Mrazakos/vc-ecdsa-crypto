@@ -222,12 +222,18 @@ All results are automatically organized by timestamp:
     └── performance-metrics.json
 
 ../anova-results/
-├── anova-report.md
-├── statistical-summary.json
-└── plots/
-    ├── distribution_boxplots.png
-    ├── qq_plots.png
-    └── ... [more visualizations]
+├── comparison-analysis/
+│   ├── anova-report.md
+│   ├── statistical-summary.json
+│   └── plots/
+├── iot-analysis/
+│   ├── anova-report.md
+│   ├── statistical-summary.json
+│   └── plots/
+└── comprehensive-analysis/
+  ├── anova-report.md
+  ├── statistical-summary.json
+  └── plots/
 ```
 
 ### Accessing Results
@@ -238,7 +244,7 @@ All results are automatically organized by timestamp:
 | Security testing       | `../comparison-results/`                                   |
 | Mobile benchmarks      | `../docker-emulation-benchmarks/mobile-benchmark-results/` |
 | IoT benchmarks         | `../docker-emulation-benchmarks/iot-benchmark-results/`    |
-| Statistical analysis   | `../anova-results/`                                        |
+| Statistical analysis   | `../anova-results/[comparison|iot|comprehensive]-analysis/`|
 
 ---
 
@@ -314,21 +320,21 @@ Use this for running complete research:
 ### Recommended Sections
 
 1. **Performance Comparison**
-   - Tables from `comparison-results/performance-*/performance-report.md`
-   - Plots from `anova-results/plots/`
+  - Tables from `comparison-results/performance-*/performance-report.md`
+  - Plots from `anova-results/*-analysis/plots/`
 
 2. **Security Analysis**
-   - Security findings from `comparison-results/security-*/security-report.md`
-   - Attack resistance data
+  - Security findings from `comparison-results/security-*/security-report.md`
+  - Attack resistance data
 
 3. **Real-World Testing**
-   - Mobile results from `docker-emulation-benchmarks/mobile-benchmark-results/`
-   - IoT results from `docker-emulation-benchmarks/iot-benchmark-results/`
+  - Mobile results from `docker-emulation-benchmarks/mobile-benchmark-results/`
+  - IoT results from `docker-emulation-benchmarks/iot-benchmark-results/`
 
 4. **Statistical Validation**
-   - ANOVA report: `anova-results/anova-report.md`
-   - Effect sizes for practical significance
-   - Post-hoc comparisons for detailed analysis
+  - ANOVA report: `anova-results/*-analysis/anova-report.md`
+  - Effect sizes for practical significance
+  - Post-hoc comparisons for detailed analysis
 
 ---
 

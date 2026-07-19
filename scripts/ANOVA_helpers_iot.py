@@ -42,7 +42,10 @@ def plot_individual_metrics(metrics_data, system_names, save_dir="plots"):
         ax.tick_params(axis='both', labelsize=22)
 
         if 'key generation' in metric_name.lower():
-            ax.set_ylim(0, 8)
+            positive_values = [value for column in columns for value in column if value > 0]
+            if positive_values:
+                ax.set_yscale('log')
+                ax.set_ylim(bottom=max(min(positive_values) / 2, 1e-3))
 
         plt.tight_layout()
         output_path = os.path.join(save_dir, f"{metric_name.replace(' ', '_')}_distribution.png")
