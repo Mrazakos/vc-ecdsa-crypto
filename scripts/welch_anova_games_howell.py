@@ -63,11 +63,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
 
-try:
-    import pingouin as pg
-    HAS_PINGOUIN = True
-except ImportError:
-    HAS_PINGOUIN = False
+import pingouin as pg
 
 
 # =============================================================================
@@ -210,8 +206,7 @@ def check_anova_assumptions(columns, group_labels):
 
 def perform_welch_anova(df, dv, between):
     """
-    Perform Welch's One-Way ANOVA.
-    Uses pingouin.welch_anova if available, with mathematical fallback.
+    Perform Welch's One-Way ANOVA using the official pingouin.welch_anova.
     
     Formula (Welch 1951):
       w_j = n_j / s_j^2
@@ -223,34 +218,12 @@ def perform_welch_anova(df, dv, between):
       df2 = (k^2 - 1) / (3 * Lambda)
       F_w = A / (1 + (2 * (k - 2) / (k^2 - 1)) * sum((1 - w_j / W)^2 / (n_j - 1)))
     """
-    if HAS_PINGOUIN:
-        res = pg.welch_anova(data=df, dv=dv, between=between)
-        f_stat = float(res['F'].iloc[0])
-        df1 = float(res['ddof1'].iloc[0])
-        df2 = float(res['ddof2'].iloc[0])
-        p_val = float(res['p_unc'].iloc[0])
-        np2 = float(res['np2'].iloc[0]) if 'np2' in res.columns else float('nan')
-    else:
-        # Analytical Welch's ANOVA
-        groups = [group[dv].dropna().values for _, group in df.groupby(between)]
-        k = len(groups)
-        ns = np.array([len(g) for g in groups], dtype=float)
-        means = np.array([np.mean(g) for g in groups], dtype=float)
-        vars_ = np.array([np.var(g, ddof=1) for g in groups], dtype=float)
-
-        weights = ns / vars_
-        W = np.sum(weights)
-        mean_prime = np.sum(weights * means) / W
-
-        term_A = np.sum(weights * (means - mean_prime) ** 2) / (k - 1)
-        lambda_terms = ((1.0 - weights / W) ** 2) / (ns - 1.0)
-        sum_lambda = np.sum(lambda_terms)
-
-        df1 = k - 1
-        df2 = (k ** 2 - 1.0) / (3.0 * sum_lambda) if sum_lambda > 0 else float('nan')
-        f_stat = term_A / (1.0 + (2.0 * (k - 2.0) / (k ** 2 - 1.0)) * sum_lambda)
-        p_val = 1.0 - f.cdf(f_stat, df1, df2)
-        np2 = (f_stat * df1) / (f_stat * df1 + df2)
+    res = pg.welch_anova(data=df, dv=dv, between=between)
+    f_stat = float(res['F'].iloc[0])
+    df1 = float(res['ddof1'].iloc[0])
+    df2 = float(res['ddof2'].iloc[0])
+    p_val = float(res['p_unc'].iloc[0])
+    np2 = float(res['np2'].iloc[0]) if 'np2' in res.columns else float('nan')
 
     reject_null = p_val < 0.05
     return {
@@ -269,9 +242,7 @@ def perform_welch_anova(df, dv, between):
 
 def perform_games_howell(df, dv, between, alpha=0.05):
     """
-    Perform Games-Howell post-hoc pairwise comparisons.
-    Uses pingouin.pairwise_gameshowell if available, supplemented with
-    analytical confidence interval calculations.
+    Perform Games-Howell post-hoc pairwise comparisons using pingouin.pairwise_gameshowell.
 
     Formula (Games & Howell 1976):
       SE_ij = sqrt(s_i^2 / n_i + s_j^2 / n_j)
@@ -284,96 +255,44 @@ def perform_games_howell(df, dv, between, alpha=0.05):
     system_order = df[between].unique().tolist()
     k = len(system_order)
 
-    if HAS_PINGOUIN:
-        gh_df = pg.pairwise_gameshowell(data=df, dv=dv, between=between)
-        rows = []
-        for _, r in gh_df.iterrows():
-            g1, g2 = r['A'], r['B']
-            diff = float(r['diff'])  # mean(A) - mean(B)
-            se = float(r['se'])
-            t_stat = float(r['T'])
-            deg_f = float(r['df'])
-            p_adj = float(r['pval'])
-            hedges = float(r['hedges']) if 'hedges' in r else float('nan')
+    # Official pingouin Games-Howell test
+    gh_df = pg.pairwise_gameshowell(data=df, dv=dv, between=between)
+    rows = []
+    for _, r in gh_df.iterrows():
+        g1, g2 = r['A'], r['B']
+        diff = float(r['diff'])  # mean(A) - mean(B)
+        se = float(r['se'])
+        t_stat = float(r['T'])
+        deg_f = float(r['df'])
+        p_adj = float(r['pval'])
+        hedges = float(r['hedges']) if 'hedges' in r else float('nan')
 
-            # Compute exact Games-Howell Studentized Range Confidence Intervals
-            q_crit = studentized_range.ppf(1.0 - alpha, k, deg_f)
-            ci_margin = q_crit * se / math.sqrt(2.0)
-            ci_lower = diff - ci_margin
-            ci_upper = diff + ci_margin
-            reject = p_adj < alpha
+        # Compute Games-Howell 95% Confidence Intervals using exact Studentized Range distribution
+        q_crit = studentized_range.ppf(1.0 - alpha, k, deg_f)
+        ci_margin = q_crit * se / math.sqrt(2.0)
+        ci_lower = diff - ci_margin
+        ci_upper = diff + ci_margin
+        reject = p_adj < alpha
 
-            mean_a = float(r['mean_A']) if 'mean_A' in r else float(df[df[between] == g1][dv].mean())
-            mean_b = float(r['mean_B']) if 'mean_B' in r else float(df[df[between] == g2][dv].mean())
+        mean_a = float(r['mean_A']) if 'mean_A' in r else float(df[df[between] == g1][dv].mean())
+        mean_b = float(r['mean_B']) if 'mean_B' in r else float(df[df[between] == g2][dv].mean())
 
-            rows.append({
-                'group1': g1,
-                'group2': g2,
-                'mean1': mean_a,
-                'mean2': mean_b,
-                'diff': diff,
-                'se': se,
-                'T': t_stat,
-                'df': deg_f,
-                'p_adj': p_adj,
-                'ci_lower': ci_lower,
-                'ci_upper': ci_upper,
-                'hedges': hedges,
-                'reject': reject
-            })
-        return pd.DataFrame(rows)
-    else:
-        # Analytical fallback
-        groups_dict = {name: group[dv].dropna().values for name, group in df.groupby(between)}
-        names = list(groups_dict.keys())
-        k = len(names)
-        rows = []
-
-        for i in range(k):
-            for j in range(i + 1, k):
-                g1, g2 = names[i], names[j]
-                x1, x2 = groups_dict[g1], groups_dict[g2]
-                n1, n2 = len(x1), len(x2)
-                m1, m2 = np.mean(x1), np.mean(x2)
-                v1, v2 = np.var(x1, ddof=1), np.var(x2, ddof=1)
-
-                diff = m1 - m2
-                se = math.sqrt(v1 / n1 + v2 / n2)
-                t_stat = diff / se if se > 0 else 0.0
-                q_stat = math.sqrt(2.0) * abs(t_stat)
-
-                num = (v1 / n1 + v2 / n2) ** 2
-                den = ((v1 / n1) ** 2) / (n1 - 1.0) + ((v2 / n2) ** 2) / (n2 - 1.0)
-                deg_f = num / den if den > 0 else 1.0
-
-                p_adj = studentized_range.sf(q_stat, k, deg_f)
-                q_crit = studentized_range.ppf(1.0 - alpha, k, deg_f)
-                ci_margin = q_crit * se / math.sqrt(2.0)
-                ci_lower = diff - ci_margin
-                ci_upper = diff + ci_margin
-                reject = p_adj < alpha
-
-                pooled_s = math.sqrt(((n1 - 1) * v1 + (n2 - 1) * v2) / (n1 + n2 - 2))
-                d = diff / pooled_s if pooled_s > 0 else 0.0
-                correction = 1.0 - 3.0 / (4.0 * (n1 + n2) - 9.0)
-                hedges = d * correction
-
-                rows.append({
-                    'group1': g1,
-                    'group2': g2,
-                    'mean1': m1,
-                    'mean2': m2,
-                    'diff': diff,
-                    'se': se,
-                    'T': t_stat,
-                    'df': deg_f,
-                    'p_adj': p_adj,
-                    'ci_lower': ci_lower,
-                    'ci_upper': ci_upper,
-                    'hedges': hedges,
-                    'reject': reject
-                })
-        return pd.DataFrame(rows)
+        rows.append({
+            'group1': g1,
+            'group2': g2,
+            'mean1': mean_a,
+            'mean2': mean_b,
+            'diff': diff,
+            'se': se,
+            'T': t_stat,
+            'df': deg_f,
+            'p_adj': p_adj,
+            'ci_lower': ci_lower,
+            'ci_upper': ci_upper,
+            'hedges': hedges,
+            'reject': reject
+        })
+    return pd.DataFrame(rows)
 
 
 # =============================================================================
