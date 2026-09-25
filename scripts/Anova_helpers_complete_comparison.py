@@ -2,7 +2,7 @@ import math
 import os
 import json
 import sys
-from scipy.stats import f, t
+from scipy.stats import f, t, shapiro, levene
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
@@ -353,6 +353,30 @@ def calculate_anova(columns, significance_level=0.05):
     }
 
 
+def check_anova_assumptions(columns, group_labels):
+    """
+    Assess the two main ANOVA assumptions prior to running ANOVA:
+    1. Normality (Shapiro-Wilk test on each group)
+    2. Homogeneity of Variance (Levene's test across groups)
+    """
+    print("\nANOVA Assumption Pre-checks:")
+    print("-" * 60)
+    print("1. Normality (Shapiro-Wilk Test per group):")
+    for label, col in zip(group_labels, columns):
+        if len(col) >= 3:
+            stat, p_val = shapiro(col)
+            is_normal = p_val > 0.05
+            print(f"   - {label:<15}: W = {stat:.4f}, p-value = {p_val:.6f} (Normal: {is_normal})")
+        else:
+            print(f"   - {label:<15}: Insufficient sample size (n < 3)")
+
+    print("\n2. Homogeneity of Variance (Levene's Test across groups):")
+    lev_stat, lev_p = levene(*columns)
+    is_homogeneous = lev_p > 0.05
+    print(f"   - Levene Statistic = {lev_stat:.4f}, p-value = {lev_p:.6f} (Equal Variances: {is_homogeneous})")
+    print("-" * 60)
+
+
 def calculate_cohens_d(group1, group2):
     """
     Calculate Cohen's d effect size between two groups.
@@ -656,15 +680,16 @@ def main():
     print("### Performing ANOVA and Tukey HSD tests ###\n")
     
     metrics_tukey_results = {}
+    all_tukey_dfs = []
     
     for metric_name, columns in metrics_data.items():
         print("="*70)
 
         metric_df = build_metric_dataframe(metric_name, columns, system_names)
         if metric_name == 'Smart Lock Verification (ms)':
-            # Focus smart-lock verification on the most relevant operational ranges.
-            bins = [1.0, 5.0, 10.0, float('inf')]
-            labels = ['1-5 ms', '5-10 ms', '> 10 ms']
+            # Operational latency ranges for IoT smart lock verification (Falcon ~8.3ms, ML-DSA ~13ms, ECDSA ~18ms)
+            bins = [5.0, 10.0, 15.0, 20.0, float('inf')]
+            labels = ['5-10 ms', '10-15 ms', '15-20 ms', '> 20 ms']
         elif 'key generation' in metric_name.lower():
             # Key generation has a huge disparity (ECDSA/ML-DSA-44 are around 1ms, Falcon is 200+ms)
             bins = [0.0, 1.0, 2.0, 5.0, 10.0, 50.0, 150.0, 300.0, float('inf')]
@@ -676,6 +701,9 @@ def main():
         print(f"Generating categorical bar chart for '{metric_name}' with bins:")
         print(f"  {labels}")
         plot_categorical_latency_barchart(metric_df, metric_name, bins, labels, save_dir=output_dir)
+
+        # 1. ANOVA Assumption Checks (Pre-checks)
+        check_anova_assumptions(columns, system_names)
 
         anova_results = calculate_anova(columns)
         anova_results['group_values'] = columns
@@ -694,10 +722,25 @@ def main():
             tukey_result = run_tukey_hsd(columns, system_names)
             print_tukey_results(tukey_result)
             metrics_tukey_results[metric_name] = tukey_result
+
+            # 2. Extract Tukey HSD results (group1, group2, meandiff, p-adj, lower, upper)
+            tukey_df = pd.DataFrame(data=tukey_result._results_table.data[1:], columns=tukey_result._results_table.data[0])
+            target_cols = ['group1', 'group2', 'meandiff', 'p-adj', 'lower', 'upper']
+            available_cols = [c for c in target_cols if c in tukey_df.columns]
+            export_df = tukey_df[available_cols].copy()
+            export_df.insert(0, 'metric', metric_name)
+            all_tukey_dfs.append(export_df)
         else:
             print("\nNo significant difference found among groups. Tukey HSD not performed.")
         print("\n" + "="*70 + "\n")
     
+    # Export all Tukey HSD results to CSV
+    if all_tukey_dfs:
+        combined_tukey_df = pd.concat(all_tukey_dfs, ignore_index=True)
+        csv_output_path = os.path.join(output_dir, "tukey_results_summary.csv")
+        combined_tukey_df.to_csv(csv_output_path, index=False)
+        print(f"✓ Exported Tukey HSD results summary to: {csv_output_path}\n")
+
     if metrics_tukey_results:
         counts, scores, ranking = aggregate_decision(metrics_tukey_results, system_names)
         print_aggregate_summary(counts, scores, ranking)
